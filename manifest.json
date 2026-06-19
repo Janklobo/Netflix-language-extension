@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "LinguaFlix",
+  "version": "0.1.0",
+  "description": "Dual subtitles and word-level translation for Netflix language learners.",
+
+  "permissions": ["storage", "identity", "alarms"],
+  "host_permissions": [
+    "https://www.netflix.com/*",
+    "https://*.supabase.co/*"
+  ],
+
+  "background": {
+    "service_worker": "src/background/index.ts",
+    "type": "module"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["https://www.netflix.com/*"],
+      "js": ["src/content/index.ts"],
+      "css": ["src/assets/styles/content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "action": {
+    "default_popup": "src/popup/index.html"
+  },
+
+  "options_page": "src/options/index.html",
+
+  "web_accessible_resources": [
+    {
+      "resources": ["src/injected/netflix-player-hook.js"],
+      "matches": ["https://www.netflix.com/*"]
+    },
+    {
+      "resources": ["dict/*"],
+      "matches": ["https://www.netflix.com/*"]
+    }
+  ]
+}

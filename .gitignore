@@ -1,0 +1,43 @@
+# ── Dependencies ──────────────────────────────────────────
+node_modules/
+
+# ── Build output ──────────────────────────────────────────
+dist/
+
+# ── Environment variables (NEVER commit) ──────────────────
+.env
+.env.local
+.env.*.local
+
+# ── Generated assets ──────────────────────────────────────
+# Run `pnpm generate:icons` (or `pnpm prepare`) to regenerate.
+src/assets/icons/*.png
+
+# ── OS artifacts ──────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDE ───────────────────────────────────────────────────
+.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# ── Logs ──────────────────────────────────────────────────
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# ── TypeScript ────────────────────────────────────────────
+tsconfig.tsbuildinfo
+
+# ── Testing ───────────────────────────────────────────────
+test-results/
+playwright-report/
+coverage/
+
+# ── Supabase local dev ────────────────────────────────────
+supabase/.temp/

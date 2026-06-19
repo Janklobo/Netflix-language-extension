@@ -1,0 +1,39 @@
+{
+  "compilerOptions": {
+    // Target ES2020 for broad Chrome support while using modern APIs (optional chaining, nullish coalescing, etc.)
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable", "WebWorker"],
+    "module": "ESNext",
+    // "bundler" resolution matches Vite's behavior: supports bare imports, package.json exports
+    "moduleResolution": "bundler",
+
+    // JSX: use the new transform (no `import React` required in every file)
+    "jsx": "react-jsx",
+
+    // Strict mode — no exceptions
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+
+    // Skip type-checking of .d.ts files in node_modules (speeds up builds; correctness unaffected)
+    "skipLibCheck": true,
+
+    // Each file is treated as an isolated module — required for Vite's transform pipeline
+    "isolatedModules": true,
+
+    // Path alias @ → src/ (must match vite.config.ts)
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+
+    // Globally available type packages
+    // - "chrome": chrome.* extension APIs
+    // - "vite/client": import.meta.env, import.meta.hot, etc.
+    "types": ["chrome", "vite/client"]
+  },
+  "include": ["src", "scripts", "tests"],
+  "exclude": ["node_modules", "dist"]
+}

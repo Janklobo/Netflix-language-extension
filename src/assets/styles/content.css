@@ -1,0 +1,89 @@
+/* LinguaFlix injected styles — namespaced under [data-linguaflix-*] to avoid Netflix collisions */
+
+.linguaflix-hide-original [data-uia="player-timedtext"],
+.linguaflix-hide-original .player-timedtext {
+  display: none !important;
+}
+
+[data-linguaflix-subtitle],
+[data-linguaflix-word],
+[data-linguaflix-popup],
+[data-linguaflix-banner] {
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* ── Translated subtitle overlay ─────────────────────────────────────────── */
+
+[data-linguaflix-subtitle] {
+  display: block;
+  text-align: center;
+  font-size: 28px;
+  font-weight: 600;
+  color: #ffffff;
+  text-shadow:
+    0 0 6px #000,
+    0 0 6px #000,
+    0 0 6px #000;
+  background: rgba(0, 0, 0, 0.78);
+  padding: 6px 18px 8px;
+  border-radius: 6px;
+  pointer-events: none;
+  line-height: 1.5;
+  max-width: 80vw;
+  white-space: pre-wrap;
+  z-index: 99997;
+}
+
+/* ── Clickable word spans ─────────────────────────────────────────────────── */
+
+[data-linguaflix-word] {
+  pointer-events: auto;
+  cursor: pointer;
+  border-bottom: 1px dotted rgba(165, 180, 252, 0.7);
+  transition: background 0.1s;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+[data-linguaflix-word]:hover {
+  background: rgba(99, 102, 241, 0.35);
+}
+
+/* ── Word translation popup ───────────────────────────────────────────────── */
+
+[data-linguaflix-popup] {
+  position: fixed;
+  z-index: 999999;
+  background: rgba(12, 12, 18, 0.96);
+  border: 1px solid rgba(99, 102, 241, 0.45);
+  border-radius: 10px;
+  padding: 12px 16px;
+  color: #f3f4f6;
+  font-size: 14px;
+  max-width: 280px;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(99, 102, 241, 0.1);
+  pointer-events: auto;
+  line-height: 1.5;
+}
+
+/* ── Degradation warning banner ──────────────────────────────────────────── */
+
+[data-linguaflix-banner] {
+  position: fixed;
+  bottom: 72px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 999998;
+  background: rgba(99, 102, 241, 0.88);
+  color: white;
+  padding: 6px 18px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+}
