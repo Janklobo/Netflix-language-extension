@@ -1,6 +1,6 @@
 import { sendToBackground } from '@/shared/utils/message';
 import { debug } from '@/shared/utils/debug';
-import { startObserving, stopObserving } from './subtitle-observer';
+import { startObserving, stopObserving, setWordClickCallback } from './subtitle-observer';
 import { showTranslation, hideTranslation, removeOverlay } from './subtitle-injector';
 import { showWordPopup, renderTokenizedSubtitle, removePopup } from './translation-popup';
 import { showBanner, removeBanner } from './degradation-banner';
@@ -72,7 +72,11 @@ function handleTimeUpdate(currentTimeMs: number): void {
 }
 
 async function handleSubtitleChange(observedText: string): Promise<void> {
-  if (!settings?.showTranslation) return;
+  if (!settings) return;
+  if (settings.subtitleMode !== 'double') return;
+
+  // Dismiss any word popup when subtitle changes
+  removePopup();
 
   // When Netflix clears the subtitle (gap between lines), hide our overlay
   if (!observedText) {
@@ -104,6 +108,9 @@ async function handleSubtitleChange(observedText: string): Promise<void> {
     if (activeSubtitleText !== text) return;
 
     if (resp.type === 'TRANSLATION') {
+      // Check again if subtitle changed while waiting for translation
+      if (activeSubtitleText !== text) return;
+
       if (settings.autoTokenize && isJapanese(text)) {
         await renderTokenizedOverlay(text, resp.payload.translatedText);
       } else {
@@ -131,6 +138,9 @@ async function renderTokenizedOverlay(
 ): Promise<void> {
   if (!settings) return;
   const tokens = await tokenize(originalText);
+  // Check if subtitle changed while tokenizing — if so, abort
+  if (activeSubtitleText !== originalText) return;
+
   let overlay = document.querySelector('[data-linguaflix-subtitle]') as HTMLDivElement | null;
   if (!overlay) {
     showTranslation(translatedText, settings.position, settings.fontSize, settings.opacity);
@@ -168,10 +178,40 @@ function applySettings(): void {
     document.documentElement.classList.add('linguaflix-hide-original');
   }
 
-  // Update visible overlay style immediately if it is present
+  // Toggle click mode class — enables pointer-events on Netflix subtitle container
+  if (settings.subtitleMode === 'click') {
+    document.documentElement.classList.add('linguaflix-click-mode');
+  } else {
+    document.documentElement.classList.remove('linguaflix-click-mode');
+  }
+
+  // Set or clear word click callback based on mode
+  if (settings.subtitleMode === 'click') {
+    const sourceLang = settings.languagePair.source;
+    const targetLang = settings.languagePair.target;
+    setWordClickCallback(async (word, reading, clickX, clickY) => {
+      trackEvent('word_translation_requested', { word, reading, episodeId: getEpisodeId() });
+      // Create a temporary element for positioning
+      const tempEl = document.createElement('span');
+      tempEl.style.position = 'fixed';
+      tempEl.style.left = `${clickX}px`;
+      tempEl.style.top = `${clickY}px`;
+      document.body.appendChild(tempEl);
+      showWordPopup(word, reading, tempEl, sourceLang, targetLang);
+      setTimeout(() => tempEl.remove(), 0);
+    });
+    // Hide overlay when switching to click mode
+    hideTranslation();
+  } else {
+    setWordClickCallback(null);
+    // Dismiss any word popup when switching from click mode
+    removePopup();
+  }
+
+  // Update visible overlay style immediately if it is present (only in double mode)
   const overlay = document.querySelector('[data-linguaflix-subtitle]') as HTMLDivElement | null;
   if (overlay) {
-    if (settings.showTranslation) {
+    if (settings.subtitleMode === 'double') {
       overlay.style.display = 'block';
       // Sync overlay positioning
       overlay.style.position = 'fixed';
@@ -209,6 +249,25 @@ async function init(): Promise<void> {
   // Initialize Sentry for Content Script context
   initMonitoring('content-script');
 
+  // Register the message listener synchronously BEFORE we do any async operations
+  // or inject the player hook. This ensures we never miss a SUBTITLE_TRACK_LOADED
+  // event posted by the player hook if it loads quickly.
+  window.addEventListener('message', (event) => {
+    if (event.source !== window || event.data?.source !== 'linguaflix') return;
+
+    const data = event.data;
+    if (data.type === 'VIDEO_TIME_UPDATE') {
+      lastCurrentTimeMs = data.currentTimeMs;
+      handleTimeUpdate(data.currentTimeMs);
+    } else if (data.type === 'SUBTITLE_TRACK_LOADED') {
+      debug('content', `Loaded subtitle track with ${data.subtitles.length} entries`);
+      subtitleTrack = data.subtitles;
+      prefetchedIndices.clear();
+      // Prefetch starting window immediately if settings are already loaded
+      handleTimeUpdate(lastCurrentTimeMs);
+    }
+  });
+
   // Inject player hook immediately to listen for video time/subtitle events early
   injectPlayerHook();
 
@@ -222,13 +281,17 @@ async function init(): Promise<void> {
   if (settingsResp?.type === 'SETTINGS') {
     settings = settingsResp.payload;
     applySettings();
+    // If subtitle track loaded before settings were fetched, prefetch now
+    if (subtitleTrack.length > 0) {
+      handleTimeUpdate(lastCurrentTimeMs);
+    }
   }
 
   debug('content', 'Session active — starting subtitle observer');
 
   // Pre-warm the kuromoji tokenizer in the background
   if (settings?.autoTokenize) {
-    getTokenizer().catch(() => {});
+    getTokenizer().catch(() => { });
   }
 
   startObserving((text) => {
@@ -238,34 +301,35 @@ async function init(): Promise<void> {
     });
   });
 
-  // Listen for messages from page context / window postMessage
-  window.addEventListener('message', (event) => {
-    if (event.source !== window || event.data?.source !== 'linguaflix') return;
-
-    const data = event.data;
-    if (data.type === 'VIDEO_TIME_UPDATE') {
-      lastCurrentTimeMs = data.currentTimeMs;
-      handleTimeUpdate(data.currentTimeMs);
-    } else if (data.type === 'SUBTITLE_TRACK_LOADED') {
-      debug('content', `Loaded subtitle track with ${data.subtitles.length} entries`);
-      subtitleTrack = data.subtitles;
-      prefetchedIndices.clear();
-      // Prefetch starting window immediately
-      handleTimeUpdate(lastCurrentTimeMs);
-    }
-  });
-
-  // Listen for settings changes broadcast from popup
+  // Listen for settings changes broadcast from popup/options page
   chrome.runtime.onMessage.addListener((msg: { type?: string }) => {
     if (msg.type === 'SETTINGS_UPDATED') {
+      const oldLanguagePair = settings?.languagePair;
+      const oldMode = settings?.subtitleMode;
       sendToBackground({ type: 'GET_SETTINGS' })
         .then((resp: ExtensionResponse) => {
           if (resp.type === 'SETTINGS') {
-            settings = resp.payload;
+            const newSettings = resp.payload;
+            const languageChanged =
+              !oldLanguagePair ||
+              oldLanguagePair.source !== newSettings.languagePair.source ||
+              oldLanguagePair.target !== newSettings.languagePair.target;
+            const modeChanged = oldMode !== newSettings.subtitleMode;
+
+            settings = newSettings;
             applySettings();
+
+            if (languageChanged) {
+              prefetchedIndices.clear();
+              handleTimeUpdate(lastCurrentTimeMs);
+            }
+
+            if (modeChanged) {
+              debug('content', `Subtitle mode changed to ${newSettings.subtitleMode}`);
+            }
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   });
 
