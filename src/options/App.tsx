@@ -11,12 +11,12 @@ export default function App(): React.ReactElement {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    trackEvent('options_opened').catch(() => {});
+    trackEvent('options_opened').catch(() => { });
     sendToBackground({ type: 'GET_SETTINGS' })
       .then((resp: ExtensionResponse) => {
         if (resp.type === 'SETTINGS') setSettings(resp.payload);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const update = async (patch: Partial<UserSettings>): Promise<void> => {
@@ -24,7 +24,7 @@ export default function App(): React.ReactElement {
     const updated = { ...settings, ...patch };
     setSettings(updated);
     await sendToBackground({ type: 'UPDATE_SETTINGS', payload: patch });
-    trackEvent('settings_updated', patch).catch(() => {});
+    trackEvent('settings_updated', patch).catch(() => { });
     setSaved(true);
     setTimeout(() => setSaved(false), 1500);
   };
@@ -57,71 +57,86 @@ export default function App(): React.ReactElement {
           <section>
             <h2 className="text-sm font-semibold text-gray-300 mb-4">Subtitle Display</h2>
             <div className="flex flex-col gap-4">
-              <ToggleRow
-                label="Show original subtitle"
-                value={settings.showOriginal}
-                onChange={(v) => update({ showOriginal: v })}
-              />
-              <ToggleRow
-                label="Show translated subtitle"
-                value={settings.showTranslation}
-                onChange={(v) => update({ showTranslation: v })}
-              />
-              <ToggleRow
-                label="Tokenize words (click for translation)"
-                value={settings.autoTokenize}
-                onChange={(v) => update({ autoTokenize: v })}
-              />
-
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-300">Translation position</span>
-                <div className="flex gap-2">
-                  {(['above', 'below'] as const).map((pos) => (
+              <div className="flex flex-col gap-2">
+                <span className="text-sm text-gray-300">Mode</span>
+                <div className="flex gap-3">
+                  {(['double', 'click'] as const).map((mode) => (
                     <button
-                      key={pos}
-                      onClick={() => update({ position: pos })}
-                      className={`px-3 py-1 text-xs rounded-md transition-colors ${
-                        settings.position === pos
-                          ? 'bg-brand-500 text-white'
-                          : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                      }`}
+                      key={mode}
+                      onClick={() => update({ subtitleMode: mode })}
+                      className={`flex-1 px-4 py-2 text-sm rounded-lg transition-colors ${settings.subtitleMode === mode
+                        ? 'bg-brand-500 text-white'
+                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                        }`}
                     >
-                      {pos.charAt(0).toUpperCase() + pos.slice(1)}
+                      {mode === 'double' ? 'Double subtitles' : 'Click-to-translate'}
                     </button>
                   ))}
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-300">Font size</span>
-                <div className="flex gap-2">
-                  {(['small', 'medium', 'large'] as const).map((size) => (
-                    <button
-                      key={size}
-                      onClick={() => update({ fontSize: size })}
-                      className={`px-3 py-1 text-xs rounded-md transition-colors ${
-                        settings.fontSize === size
-                          ? 'bg-brand-500 text-white'
-                          : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                      }`}
-                    >
-                      {size.charAt(0).toUpperCase() + size.slice(1)}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              {settings.subtitleMode === 'double' && (
+                <>
+                  <ToggleRow
+                    label="Show original subtitle"
+                    value={settings.showOriginal}
+                    onChange={(v) => update({ showOriginal: v })}
+                  />
+                  <ToggleRow
+                    label="Tokenize words (click for translation)"
+                    value={settings.autoTokenize}
+                    onChange={(v) => update({ autoTokenize: v })}
+                  />
 
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-300">Opacity: {settings.opacity}%</span>
-                <input
-                  type="range"
-                  min={20}
-                  max={100}
-                  value={settings.opacity}
-                  onChange={(e) => update({ opacity: parseInt(e.target.value) })}
-                  className="w-32 accent-brand-500"
-                />
-              </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-300">Translation position</span>
+                    <div className="flex gap-2">
+                      {(['above', 'below'] as const).map((pos) => (
+                        <button
+                          key={pos}
+                          onClick={() => update({ position: pos })}
+                          className={`px-3 py-1 text-xs rounded-md transition-colors ${settings.position === pos
+                            ? 'bg-brand-500 text-white'
+                            : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                            }`}
+                        >
+                          {pos.charAt(0).toUpperCase() + pos.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-300">Font size</span>
+                    <div className="flex gap-2">
+                      {(['small', 'medium', 'large'] as const).map((size) => (
+                        <button
+                          key={size}
+                          onClick={() => update({ fontSize: size })}
+                          className={`px-3 py-1 text-xs rounded-md transition-colors ${settings.fontSize === size
+                            ? 'bg-brand-500 text-white'
+                            : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                            }`}
+                        >
+                          {size.charAt(0).toUpperCase() + size.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-300">Opacity: {settings.opacity}%</span>
+                    <input
+                      type="range"
+                      min={20}
+                      max={100}
+                      value={settings.opacity}
+                      onChange={(e) => update({ opacity: parseInt(e.target.value) })}
+                      className="w-32 accent-brand-500"
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </section>
 
@@ -184,14 +199,12 @@ function ToggleRow({
       <span className="text-sm text-gray-300">{label}</span>
       <button
         onClick={() => onChange(!value)}
-        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-          value ? 'bg-brand-500' : 'bg-gray-700'
-        }`}
+        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${value ? 'bg-brand-500' : 'bg-gray-700'
+          }`}
       >
         <span
-          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-            value ? 'translate-x-6' : 'translate-x-1'
-          }`}
+          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${value ? 'translate-x-6' : 'translate-x-1'
+            }`}
         />
       </button>
     </div>

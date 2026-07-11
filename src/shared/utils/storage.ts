@@ -4,8 +4,8 @@ import { DEFAULT_LANGUAGE_PAIR } from '@/shared/constants/languages';
 
 const DEFAULT_SETTINGS: UserSettings = {
   languagePair: DEFAULT_LANGUAGE_PAIR,
+  subtitleMode: 'double',
   showOriginal: true,
-  showTranslation: true,
   fontSize: 'medium',
   opacity: 90,
   position: 'above',
@@ -28,7 +28,20 @@ export async function setSession(session: UserSession | null): Promise<void> {
 export async function getSettings(): Promise<UserSettings> {
   const result = await chrome.storage.local.get(SETTINGS_KEY);
   const stored = result[SETTINGS_KEY] as Partial<UserSettings> | undefined;
-  return { ...DEFAULT_SETTINGS, ...stored };
+
+  // Migration: if showTranslation exists but subtitleMode doesn't, migrate it
+  const settings = { ...DEFAULT_SETTINGS, ...stored };
+  if (stored && 'showTranslation' in stored && !('subtitleMode' in stored)) {
+    const subtitleMode: 'double' | 'click' = stored.showTranslation ? 'double' : 'click';
+    const migratedSettings = { ...DEFAULT_SETTINGS, ...stored, subtitleMode };
+    // Remove old showTranslation setting by not including it
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { showTranslation, ...cleanStored } = stored;
+    await chrome.storage.local.set({ [SETTINGS_KEY]: { ...DEFAULT_SETTINGS, ...cleanStored, subtitleMode } });
+    return migratedSettings;
+  }
+
+  return settings;
 }
 
 export async function setSettings(settings: Partial<UserSettings>): Promise<void> {

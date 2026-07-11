@@ -11,10 +11,12 @@ export type LanguagePair = {
   target: string; // e.g. 'en'
 };
 
+export type SubtitleMode = 'double' | 'click';
+
 export type UserSettings = {
   languagePair: LanguagePair;
+  subtitleMode: SubtitleMode;
   showOriginal: boolean;
-  showTranslation: boolean;
   fontSize: 'small' | 'medium' | 'large';
   opacity: number; // 0-100
   position: 'above' | 'below';
@@ -46,6 +48,7 @@ export type WordTranslation = {
 export type ExtensionMessage =
   | { type: 'GET_USER_SESSION' }
   | { type: 'SIGN_IN'; payload: { email: string; password: string } }
+  | { type: 'SIGN_IN_GOOGLE' }
   | { type: 'SIGN_OUT' }
   | { type: 'GET_SETTINGS' }
   | { type: 'UPDATE_SETTINGS'; payload: Partial<UserSettings> }

@@ -42,17 +42,26 @@ export function showWordPopup(
   })
     .then((resp: ExtensionResponse) => {
       if (!popupEl) return;
-      if (resp.type === 'TRANSLATION') {
-        const definitionEl = popupEl.querySelector('div:last-child');
-        if (definitionEl) {
+      const definitionEl = popupEl.querySelector('div:last-child');
+      if (definitionEl) {
+        if (resp.type === 'TRANSLATION') {
           definitionEl.textContent = resp.payload.translatedText;
           (definitionEl as HTMLElement).style.color = '#e5e7eb';
           (definitionEl as HTMLElement).style.fontSize = '14px';
+        } else {
+          definitionEl.textContent = 'Translation failed';
+          (definitionEl as HTMLElement).style.color = '#f87171'; // red-400
         }
       }
     })
     .catch((err: unknown) => {
       debug('popup', 'Word translation failed:', err);
+      if (!popupEl) return;
+      const definitionEl = popupEl.querySelector('div:last-child');
+      if (definitionEl) {
+        definitionEl.textContent = 'Translation error';
+        (definitionEl as HTMLElement).style.color = '#f87171'; // red-400
+      }
     });
 
   // Dismiss on next click anywhere

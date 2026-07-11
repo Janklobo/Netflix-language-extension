@@ -13,7 +13,8 @@
       "Bash(pkill:*)",
       "Bash(pnpm typecheck:*)",
       "Bash(pnpm lint:*)",
-      "Bash(pnpm lint:fix)"
+      "Bash(pnpm lint:fix)",
+      "Bash(npm run:*)"
     ]
   }
 }

@@ -1,5 +1,5 @@
 import type { ExtensionMessage, ExtensionResponse } from '@/shared/types/extension.types';
-import { signIn, signOut, refreshSession } from './auth-manager';
+import { signIn, signInWithGoogle, signOut, refreshSession } from './auth-manager';
 import { translate, prefetch } from './translator';
 import { getSession, getSettings, setSettings } from '@/shared/utils/storage';
 import { TOKEN_REFRESH_ALARM } from '@/shared/constants/cache';
@@ -61,6 +61,14 @@ async function handleMessage(message: ExtensionMessage): Promise<ExtensionRespon
       return { type: 'USER_SESSION', payload: session };
     }
 
+    case 'SIGN_IN_GOOGLE': {
+      const session = await signInWithGoogle();
+      if (session) {
+        await trackEventDirect('sign_in_google_success', session.userId, { email: session.email });
+      }
+      return { type: 'USER_SESSION', payload: session };
+    }
+
     case 'SIGN_OUT': {
       const session = await getSession();
       const distinctId = session ? session.userId : 'anonymous';
@@ -76,6 +84,18 @@ async function handleMessage(message: ExtensionMessage): Promise<ExtensionRespon
 
     case 'UPDATE_SETTINGS': {
       await setSettings(message.payload);
+      try {
+        const tabs = await chrome.tabs.query({ url: 'https://www.netflix.com/*' });
+        for (const tab of tabs) {
+          if (tab.id) {
+            chrome.tabs.sendMessage(tab.id, { type: 'SETTINGS_UPDATED' }).catch(() => {
+              // Ignore error if content script is not injected in this tab yet
+            });
+          }
+        }
+      } catch (err) {
+        debug('sw', 'Failed to broadcast settings update:', err);
+      }
       return { type: 'OK' };
     }
 
@@ -109,3 +129,17 @@ chrome.alarms.onAlarm.addListener((alarm) => {
     });
   }
 });
+
+// Reschedule token refresh alarm on SW start/restart if session is active
+getSession()
+  .then((session) => {
+    if (session) {
+      const msUntilRefresh = session.expiresAt - Date.now() - 5 * 60 * 1000;
+      const delayInMinutes = Math.max(1, msUntilRefresh / 60000);
+      chrome.alarms.create(TOKEN_REFRESH_ALARM, { delayInMinutes });
+      debug('sw', `Rescheduled token refresh in ${delayInMinutes.toFixed(1)}m for ${session.email}`);
+    }
+  })
+  .catch((err) => {
+    debug('sw', 'Failed to reschedule token refresh on startup:', err);
+  });

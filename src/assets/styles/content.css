@@ -5,6 +5,13 @@
   display: none !important;
 }
 
+/* Enable click-through to subtitle words in click mode */
+.linguaflix-click-mode [data-uia="player-timedtext"],
+.linguaflix-click-mode .player-timedtext {
+  pointer-events: auto !important;
+  cursor: pointer;
+}
+
 [data-linguaflix-subtitle],
 [data-linguaflix-word],
 [data-linguaflix-popup],

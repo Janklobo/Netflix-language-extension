@@ -2,11 +2,164 @@ import { NETFLIX_SELECTORS } from '@/shared/constants/netflix';
 import { debug } from '@/shared/utils/debug';
 
 export type SubtitleChangeCallback = (text: string) => void;
+export type WordClickCallback = (word: string, reading: string | undefined, clickX: number, clickY: number) => void;
 
 let observer: MutationObserver | null = null;
 let playerObserver: MutationObserver | null = null;
 let currentContainer: Element | null = null;
 let playerObserverTimer: ReturnType<typeof setTimeout> | null = null;
+let wordClickCallback: WordClickCallback | null = null;
+let globalPointerDownHandler: EventListener | null = null;
+let globalMouseDownHandler: EventListener | null = null;
+let globalClickHandler: EventListener | null = null;
+const clickHandlers = new WeakMap<Element, EventListener>();
+
+/**
+ * Set the callback for word clicks on subtitles.
+ * Pass null to disable click-to-translate mode.
+ */
+export function setWordClickCallback(callback: WordClickCallback | null): void {
+  wordClickCallback = callback;
+  if (callback) {
+    installGlobalSubtitlePointerDownHandler();
+  } else {
+    removeGlobalSubtitlePointerDownHandler();
+  }
+
+  if (currentContainer) {
+    applyPointerEvents(currentContainer, callback !== null);
+    attachClickHandler(currentContainer);
+  }
+}
+
+function installGlobalSubtitlePointerDownHandler(): void {
+  if (globalPointerDownHandler) return;
+
+  const stopIfSubtitleHit = (event: Event): void => {
+    const mouseEvent = event as MouseEvent;
+    const target = mouseEvent.target as HTMLElement | null;
+
+    if (!wordClickCallback || !currentContainer) {
+      return;
+    }
+
+    if (mouseEvent.button !== 0) {
+      return;
+    }
+
+    if (target?.closest('[data-linguaflix-popup]') || target?.closest('[data-linguaflix-subtitle]')) {
+      return;
+    }
+
+    if (!isSubtitleHitAtPoint(mouseEvent.clientX, mouseEvent.clientY)) {
+      return;
+    }
+
+    event.stopImmediatePropagation();
+    event.preventDefault();
+  };
+
+  globalPointerDownHandler = stopIfSubtitleHit;
+  globalMouseDownHandler = stopIfSubtitleHit;
+
+  globalClickHandler = async (event: Event): Promise<void> => {
+    const mouseEvent = event as MouseEvent;
+    const target = mouseEvent.target as HTMLElement | null;
+
+    if (!wordClickCallback || !currentContainer) {
+      return;
+    }
+
+    if (mouseEvent.button !== 0) {
+      return;
+    }
+
+    if (target?.closest('[data-linguaflix-popup]') || target?.closest('[data-linguaflix-subtitle]')) {
+      return;
+    }
+
+    if (!isSubtitleHitAtPoint(mouseEvent.clientX, mouseEvent.clientY)) {
+      return;
+    }
+
+    event.stopImmediatePropagation();
+    event.preventDefault();
+
+    const { extractWordAtPosition } = await import('./word-extractor');
+    const extracted = await extractWordAtPosition(mouseEvent.clientX, mouseEvent.clientY);
+
+    if (extracted && wordClickCallback) {
+      wordClickCallback(extracted.word, extracted.reading, mouseEvent.clientX, mouseEvent.clientY);
+    }
+  };
+
+  document.addEventListener('pointerdown', globalPointerDownHandler, {
+    capture: true,
+    passive: false,
+  });
+  document.addEventListener('mousedown', globalMouseDownHandler, {
+    capture: true,
+    passive: false,
+  });
+  document.addEventListener('click', globalClickHandler, {
+    capture: true,
+    passive: false,
+  });
+}
+
+function removeGlobalSubtitlePointerDownHandler(): void {
+  if (globalPointerDownHandler) {
+    document.removeEventListener('pointerdown', globalPointerDownHandler, {
+      capture: true,
+    });
+    globalPointerDownHandler = null;
+  }
+  if (globalMouseDownHandler) {
+    document.removeEventListener('mousedown', globalMouseDownHandler, {
+      capture: true,
+    });
+    globalMouseDownHandler = null;
+  }
+  if (globalClickHandler) {
+    document.removeEventListener('click', globalClickHandler, {
+      capture: true,
+    });
+    globalClickHandler = null;
+  }
+}
+
+function isSubtitleHitAtPoint(clickX: number, clickY: number): boolean {
+  if (!currentContainer) return false;
+
+  const elements = document.elementsFromPoint(clickX, clickY);
+  for (const element of elements) {
+    if (element.closest('[data-linguaflix-popup]') || element.closest('[data-linguaflix-subtitle]')) {
+      continue;
+    }
+    if (element.closest(NETFLIX_SELECTORS.SUBTITLE_CONTAINER)) {
+      return true;
+    }
+  }
+
+  const rect = currentContainer.getBoundingClientRect();
+  return clickX >= rect.left && clickX <= rect.right && clickY >= rect.top && clickY <= rect.bottom;
+}
+
+/**
+ * Enable or disable pointer events on the subtitle container.
+ * Netflix sets pointer-events: none so clicks pass through to the video.
+ * We must override this inline to allow subtitle word clicks.
+ */
+function applyPointerEvents(container: Element, enable: boolean): void {
+  const el = container as HTMLElement;
+  if (enable) {
+    el.style.setProperty('pointer-events', 'auto', 'important');
+    el.style.cursor = 'pointer';
+  } else {
+    el.style.removeProperty('pointer-events');
+    el.style.removeProperty('cursor');
+  }
+}
 
 /**
  * Wait for the Netflix player subtitle container to appear, then start
@@ -30,7 +183,9 @@ export function startObserving(onSubtitleChange: SubtitleChangeCallback): void {
         observer?.disconnect();
         observer = null;
         currentContainer = container;
+        applyPointerEvents(container, wordClickCallback !== null);
         attachSubtitleObserver(container, onSubtitleChange);
+        attachClickHandler(container);
         debug('subtitle-observer', 'Attached to subtitle container');
       } else if (!container && currentContainer) {
         // Container was removed — wait for the next one
@@ -48,7 +203,9 @@ export function startObserving(onSubtitleChange: SubtitleChangeCallback): void {
   const existing = document.querySelector(NETFLIX_SELECTORS.SUBTITLE_CONTAINER);
   if (existing) {
     currentContainer = existing;
+    applyPointerEvents(existing, wordClickCallback !== null);
     attachSubtitleObserver(existing, onSubtitleChange);
+    attachClickHandler(existing);
     debug('subtitle-observer', 'Attached to existing subtitle container');
   } else {
     debug('subtitle-observer', 'Waiting for Netflix player...');
@@ -60,12 +217,70 @@ export function stopObserving(): void {
   observer = null;
   playerObserver?.disconnect();
   playerObserver = null;
+
+  // Clean up click handlers and restore pointer events
+  if (currentContainer) {
+    const handler = clickHandlers.get(currentContainer);
+    if (handler) {
+      currentContainer.removeEventListener('click', handler, true);
+    }
+    applyPointerEvents(currentContainer, false);
+  }
+
+  removeGlobalSubtitlePointerDownHandler();
   currentContainer = null;
   if (playerObserverTimer) {
     clearTimeout(playerObserverTimer);
     playerObserverTimer = null;
   }
   debug('subtitle-observer', 'Stopped');
+}
+
+function attachClickHandler(container: Element): void {
+  // Remove existing click handler if any
+  const existingHandler = clickHandlers.get(container);
+  if (existingHandler) {
+    container.removeEventListener('click', existingHandler, true);
+    clickHandlers.delete(container);
+  }
+
+  const handler: EventListener = async (event: Event): Promise<void> => {
+    const mouseEvent = event as MouseEvent;
+    const target = mouseEvent.target as HTMLElement;
+
+    // Ignore clicks on our own injected elements
+    if (target.closest('[data-linguaflix-popup]') || target.closest('[data-linguaflix-subtitle]')) {
+      return;
+    }
+
+    // Only handle clicks on the subtitle container itself or its direct children
+    const subtitleContainer = target.closest('[data-uia="player-timedtext"], .player-timedtext');
+    if (!subtitleContainer) {
+      return; // Click is not on subtitles, let it pass through
+    }
+
+    // Check if word click feature is enabled (wordClickCallback is set)
+    if (!wordClickCallback) {
+      return; // Feature not enabled, let click pass through
+    }
+
+    // Stop propagation immediately — must be before await so Netflix's click handler
+    // doesn't fire while we're extracting the word asynchronously.
+    mouseEvent.stopPropagation();
+    mouseEvent.preventDefault();
+
+    // Extract word at click position
+    const { extractWordAtPosition } = await import('./word-extractor');
+    const extracted = await extractWordAtPosition(mouseEvent.clientX, mouseEvent.clientY);
+
+    if (extracted && wordClickCallback) {
+      wordClickCallback(extracted.word, extracted.reading, mouseEvent.clientX, mouseEvent.clientY);
+    }
+  };
+
+  // Register on container in capture phase to intercept before Netflix's handlers
+  container.addEventListener('click', handler, true);
+  clickHandlers.set(container, handler);
 }
 
 function attachSubtitleObserver(

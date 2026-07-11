@@ -18,7 +18,7 @@ export default function App(): React.ReactElement {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    trackEvent('popup_opened').catch(() => {});
+    trackEvent('popup_opened').catch(() => { });
     Promise.all([
       sendToBackground({ type: 'GET_USER_SESSION' }),
       sendToBackground({ type: 'GET_SETTINGS' }),
@@ -47,7 +47,7 @@ export default function App(): React.ReactElement {
         setView('dashboard');
         setEmail('');
         setPassword('');
-        trackEvent('sign_in_success_ui', { email: resp.payload.email }).catch(() => {});
+        trackEvent('sign_in_success_ui', { email: resp.payload.email }).catch(() => { });
       } else {
         setError('Sign in failed. Check your email and password.');
       }
@@ -58,8 +58,29 @@ export default function App(): React.ReactElement {
     }
   };
 
+  const handleSignInGoogle = async (): Promise<void> => {
+    setSigningIn(true);
+    setError('');
+    try {
+      const resp = await sendToBackground({ type: 'SIGN_IN_GOOGLE' });
+      if (resp.type === 'USER_SESSION' && resp.payload) {
+        setSession(resp.payload);
+        setView('dashboard');
+        setEmail('');
+        setPassword('');
+        trackEvent('sign_in_google_success_ui', { email: resp.payload.email }).catch(() => { });
+      } else {
+        setError('Google sign in failed. Try again.');
+      }
+    } catch (err) {
+      setError('Google sign in error. Please try again.');
+    } finally {
+      setSigningIn(false);
+    }
+  };
+
   const handleSignOut = async (): Promise<void> => {
-    trackEvent('sign_out_ui').catch(() => {});
+    trackEvent('sign_out_ui').catch(() => { });
     await sendToBackground({ type: 'SIGN_OUT' });
     setSession(null);
     setView('login');
@@ -69,15 +90,14 @@ export default function App(): React.ReactElement {
     const newSettings = { languagePair: { source, target } };
     await sendToBackground({ type: 'UPDATE_SETTINGS', payload: newSettings });
     if (settings) setSettings({ ...settings, ...newSettings });
-    trackEvent('language_pair_changed', { source, target }).catch(() => {});
+    trackEvent('language_pair_changed', { source, target }).catch(() => { });
   };
 
-  const toggleTranslation = async (): Promise<void> => {
-    if (!settings) return;
-    const updated = { showTranslation: !settings.showTranslation };
+  const updateMode = async (mode: 'double' | 'click'): Promise<void> => {
+    const updated = { subtitleMode: mode };
     await sendToBackground({ type: 'UPDATE_SETTINGS', payload: updated });
-    setSettings({ ...settings, ...updated });
-    trackEvent('translation_toggled', { showTranslation: !settings.showTranslation }).catch(() => {});
+    if (settings) setSettings({ ...settings, ...updated });
+    trackEvent('subtitle_mode_changed', { mode }).catch(() => { });
   };
 
   return (
@@ -138,6 +158,18 @@ export default function App(): React.ReactElement {
               >
                 {signingIn ? 'Signing in...' : 'Sign in'}
               </button>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-px bg-gray-700" />
+                <span className="text-xs text-gray-500">or</span>
+                <div className="flex-1 h-px bg-gray-700" />
+              </div>
+              <button
+                onClick={handleSignInGoogle}
+                disabled={signingIn}
+                className="w-full bg-white text-gray-900 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {signingIn ? 'Signing in...' : 'Sign in with Google'}
+              </button>
             </div>
           </div>
         )}
@@ -155,21 +187,24 @@ export default function App(): React.ReactElement {
               </button>
             </div>
 
-            {/* Translation toggle */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-300">Translation</span>
-              <button
-                onClick={toggleTranslation}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  settings.showTranslation ? 'bg-brand-500' : 'bg-gray-700'
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    settings.showTranslation ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
+            {/* Mode selector */}
+            <div className="flex flex-col gap-2">
+              <span className="text-sm text-gray-300">Mode</span>
+              <div className="flex gap-2">
+                {(['double', 'click'] as const
+                ).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => updateMode(mode)}
+                    className={`flex-1 px-3 py-2 text-xs rounded-lg transition-colors ${settings.subtitleMode === mode
+                      ? 'bg-brand-500 text-white'
+                      : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                      }`}
+                  >
+                    {mode === 'double' ? 'Double' : 'Click'}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Language pair */}
@@ -212,7 +247,9 @@ export default function App(): React.ReactElement {
 
             {/* Hint */}
             <p className="text-xs text-gray-600 text-center mt-2">
-              Open Netflix and start watching to see dual subtitles.
+              {settings.subtitleMode === 'double'
+                ? 'Open Netflix and start watching to see dual subtitles.'
+                : 'Open Netflix and click on subtitle words for translation.'}
             </p>
           </div>
         )}

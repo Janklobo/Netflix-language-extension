@@ -80,7 +80,7 @@ Supabase Edge Function secrets are set via `supabase secrets set` — never in `
 - [x] Phase 3  — Supabase schema + Edge Function (translate proxy) — deployed 2026-06-07
 - [x] Phase 4  — Service worker foundation (auth + translation + message router)
 - [x] Phase 5  — Netflix subtitle observer + injector + tokenizer + popups
-- [ ] Phase 6  — Translation pre-fetch pipeline
+- [x] Phase 6  — Translation pre-fetch pipeline
 - [x] Phase 7  — Word tokenizer + translation popup
 - [x] Phase 8  — Extension popup UI (React: auth, language selector)
 - [x] Phase 9  — Options page (React: settings)
@@ -91,7 +91,7 @@ Supabase Edge Function secrets are set via `supabase secrets set` — never in `
 - [ ] Phase 14 — Build optimisation + Chrome Web Store prep
 
 ## Current Project Status (as of 2026-06-19)
-**FULLY WORKING END-TO-END** — Auth, translation, and subtitle overlay all functional.
+**FULLY WORKING END-TO-END** — Auth, translation, subtitle overlay, and translation pre-fetching all functional.
 
 ### Completed
 1. **Auth working** — Email/password login via Supabase Auth (username/password for now, Google OAuth2 planned)
@@ -99,6 +99,7 @@ Supabase Edge Function secrets are set via `supabase secrets set` — never in `
 3. **Edge Function deployed** — `translate` function live, proxies to Google Cloud Translation API v2
 4. **Google Translate API key** — Set as Supabase secret `GOOGLE_TRANSLATE_API_KEY`
 5. **Subtitle overlay working** — Translations appear above Netflix subtitles at 22% from bottom, 28px bold white text
+6. **Pre-fetch pipeline working** — Automatically catches upcoming subtitles 30-60s ahead, translates them sequentially/concurrently in the background with a limit of 3, and caches them in `chrome.storage.local`.
 
 ### Bugs Fixed (June 7, 2026)
 - `.env` had typo in Supabase URL (`vww` instead of `vw`) — caused `ERR_NAME_NOT_RESOLVED`
@@ -134,6 +135,9 @@ These are hard-won architectural insights — do NOT revert these decisions:
   2. Replaced `SUPABASE_SERVICE_ROLE_KEY` with `SUPABASE_ANON_KEY` — the function doesn't need service-role privileges.
   3. Pass the caller's `Authorization` header via `createClient(..., { global: { headers: { Authorization: authHeader } } })` and call `getUser()` with no argument, letting Supabase's auth pipeline validate both HS256 and asymmetric tokens.
   4. Replaced deprecated `serve()` from `std/http/server.ts` with `Deno.serve()`.
+- **Pre-fetch pipeline race condition** — Content script `init()` was loading user settings and session asynchronously before registering the `message` event listener. This caused the script to miss the `SUBTITLE_TRACK_LOADED` event sent by the player hook during initial load. Fix: Registered the window event listener synchronously at the very beginning of the content script's initialization.
+- **Settings update broadcast missing** — Changing language settings in the options page or popup updated storage, but did not broadcast `SETTINGS_UPDATED` to existing content scripts. Fix: Background script now broadcasts `SETTINGS_UPDATED` to all active Netflix tabs when settings are modified. Content scripts now clear their prefetch caches and re-trigger pre-fetching if the language pair is changed.
+- **Prefetch API overload** — Large batches of prefetch requests could cause spikes of concurrent HTTP connections to the translation API. Fix: Implemented a concurrency-limited worker pool (limit of 3) for processing prefetch requests.
 
 ### Lessons learned (Edge Function auth)
 - **Never manually extract and pass JWT tokens to `getUser(token)`.** Use `createClient` with the caller's `Authorization` header and call `getUser()` (no arg) so the Supabase client handles token validation through its standard pipeline.
@@ -144,10 +148,22 @@ These are hard-won architectural insights — do NOT revert these decisions:
 - Position setting "above/below" in Options page maps to fixed percentages (22% / 6% from bottom), not pixel-perfect relative to Netflix subtitles
 - Font size setting in Options page (small/medium/large) is not wired up — font is hardcoded to 28px
 - Auth is email/password only — Google OAuth2 not yet configured
-- Translation is reactive (translated after subtitle appears) — pre-fetch pipeline (Phase 6) not yet wired
 
 ### Phases Not Yet Implemented
-- Phase 6 (Pre-fetch pipeline) — Subtitle observer ready, time-ahead caching not wired
 - Phase 11–12 (Analytics/Sentry) — SDK imports present but no event instrumentation
-- Phase 13 (Tests) — Test infrastructure present (Vitest, Playwright) but no test cases written
+- Phase 13 (Tests) — Test infrastructure present (Vitest, Playwright) but no test cases written (except for parser, tokenizer, and translator unit tests)
 - Phase 14 (Store prep) — Build artifact ready for Web Store
+
+## Website Project (June 20, 2026)
+**Status**: Marketing website initiated in `./website/` folder.
+
+- **Repo**: https://github.com/Janklobo/neon-flix-learn (cloned locally)
+- **Tech**: React + TypeScript + Tailwind CSS + Vite + Lovable AI-generated
+- **Purpose**: Modern, futuristic marketing site for extension acquisition and future monetization
+- **Design**: Dark mode with neon accents (electric blue + violet), glassmorphism, smooth animations
+- **Pages**: 
+  - Landing (`/`) — Hero with "Watch Netflix. Learn Japanese" tagline, 3-step onboarding flow, features grid, coming-soon pricing, testimonials, CTA banner
+  - About (`/about`) — Placeholder for company story and team (to be filled)
+  - Privacy Policy (`/privacy`) — Standard privacy policy template
+- **Future monetization**: Free tier (limited translations) + Pro tier (unlimited, vocabulary tracking, flashcard export) — pricing not yet live
+- **Notes**: Install CTA button currently placeholders to `#`; will be replaced with actual Chrome Web Store URL once extension is listed

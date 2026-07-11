@@ -6,6 +6,7 @@ dist/
 
 # ── Environment variables (NEVER commit) ──────────────────
 .env
+.env.*
 .env.local
 .env.*.local
 
@@ -41,3 +42,6 @@ coverage/
 
 # ── Supabase local dev ────────────────────────────────────
 supabase/.temp/
+
+# ── Media files ───────────────────────────────────────────
+*.mp4

@@ -2,6 +2,7 @@ import type { TranslationRequest, TranslationResult } from '@/shared/types/exten
 import { getCachedTranslation, setCachedTranslation, getSession } from '@/shared/utils/storage';
 import { translationCacheKey } from '@/shared/constants/cache';
 import { debug } from '@/shared/utils/debug';
+import { refreshSession } from './auth-manager';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
@@ -22,10 +23,22 @@ export async function translate(req: TranslationRequest): Promise<TranslationRes
     };
   }
 
-  const session = await getSession();
+  let session = await getSession();
   if (!session) {
     debug('translator', 'No session — cannot translate');
     return null;
+  }
+
+  // Proactively refresh session if it's expired or expiring in less than 2 minutes
+  if (Date.now() >= session.expiresAt - 120000) {
+    debug('translator', 'Access token expiring soon or expired, refreshing...');
+    const refreshed = await refreshSession();
+    if (refreshed) {
+      session = refreshed;
+    } else {
+      debug('translator', 'Session refresh failed during translation request');
+      return null;
+    }
   }
 
   try {
@@ -65,10 +78,23 @@ export async function translate(req: TranslationRequest): Promise<TranslationRes
 }
 
 export async function prefetch(requests: TranslationRequest[]): Promise<void> {
-  // Fire-and-forget pre-fetch for upcoming subtitles
-  for (const req of requests) {
-    translate(req).catch(() => {
-      // Silently ignore pre-fetch errors
-    });
-  }
+  // Fire-and-forget pre-fetch for upcoming subtitles with concurrency limit of 3
+  const limit = 3;
+  const queue = [...requests];
+  
+  const workers = Array.from({ length: Math.min(limit, queue.length) }, async () => {
+    while (queue.length > 0) {
+      const req = queue.shift();
+      if (!req) break;
+      try {
+        await translate(req);
+        // Throttle prefetch requests to stay within translation rate limits
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      } catch (err) {
+        debug('translator', 'Prefetch translation failed for text:', req.text, err);
+      }
+    }
+  });
+
+  await Promise.all(workers);
 }

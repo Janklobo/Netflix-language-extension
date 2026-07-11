@@ -3,7 +3,40 @@
 ## Overview
 This document tracks the setup progress for the LinguaFlix Netflix language extension.
 
-## Status: 🟡 In Progress
+## Status: ✅ Click-to-Translate Feature Implemented
+
+---
+
+## Click-to-Translate Feature (NEW)
+
+**Status**: ✅ Completed (June 24, 2026)
+
+Users can now click on any word in Netflix subtitles to get instant translation. The feature supports all languages and works with two mutually exclusive modes:
+
+### Implemented Changes
+
+1. **Added `subtitleMode` setting** to UserSettings type ('double' | 'click')
+2. **Updated UI** in both popup and options pages with mode selector
+3. **Created word extraction utility** (`src/content/word-extractor.ts`)
+   - Supports Japanese (kuromoji tokenizer) and non-Japanese languages
+   - Detects clicked word using `caretRangeFromPoint`
+4. **Added click handler** to subtitle observer
+   - Attaches/detaches based on mode
+   - Uses WeakMap for handler storage
+5. **Updated content script** to respect mode setting
+   - Double mode: shows translation overlay
+   - Click mode: enables word click translation
+6. **Added migration logic** for existing users (showTranslation → subtitleMode)
+
+### Files Modified
+
+- `src/shared/types/extension.types.ts` - Added SubtitleMode type and subtitleMode to UserSettings
+- `src/shared/utils/storage.ts` - Updated defaults and migration logic
+- `src/options/App.tsx` - Added mode selector UI
+- `src/popup/App.tsx` - Added mode selector UI
+- `src/content/word-extractor.ts` - New file for word extraction
+- `src/content/subtitle-observer.ts` - Added click handler attachment
+- `src/content/index.ts` - Updated mode-based behavior
 
 ---
 

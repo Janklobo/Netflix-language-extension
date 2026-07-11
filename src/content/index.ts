@@ -37,11 +37,12 @@ function injectPlayerHook(): void {
 
 function handleTimeUpdate(currentTimeMs: number): void {
   if (subtitleTrack.length === 0 || !settings) return;
+  if (settings.subtitleMode !== 'double') return;
 
   const episodeId = getEpisodeId();
-  // Prefetch upcoming subtitles 30 to 60 seconds ahead
-  const prefetchStart = currentTimeMs + 30000;
-  const prefetchEnd = currentTimeMs + 60000;
+  // Prefetch upcoming subtitles 0 to 30 seconds ahead
+  const prefetchStart = currentTimeMs;
+  const prefetchEnd = currentTimeMs + 30000;
 
   const toPrefetch = subtitleTrack.filter(
     (sub) =>
@@ -73,10 +74,11 @@ function handleTimeUpdate(currentTimeMs: number): void {
 
 async function handleSubtitleChange(observedText: string): Promise<void> {
   if (!settings) return;
-  if (settings.subtitleMode !== 'double') return;
 
   // Dismiss any word popup when subtitle changes
   removePopup();
+
+  if (settings.subtitleMode !== 'double') return;
 
   // When Netflix clears the subtitle (gap between lines), hide our overlay
   if (!observedText) {
@@ -319,7 +321,7 @@ async function init(): Promise<void> {
             settings = newSettings;
             applySettings();
 
-            if (languageChanged) {
+            if (languageChanged || (modeChanged && newSettings.subtitleMode === 'double')) {
               prefetchedIndices.clear();
               handleTimeUpdate(lastCurrentTimeMs);
             }

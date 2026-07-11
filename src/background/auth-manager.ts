@@ -6,6 +6,24 @@ import { debug } from '@/shared/utils/debug';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
+function decodeJwt(token: string): { sub: string; email: string } | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payloadBase64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const jsonStr = decodeURIComponent(
+      atob(payloadBase64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonStr);
+  } catch (err) {
+    console.error('[AUTH] Failed to decode JWT:', err);
+    return null;
+  }
+}
+
 export async function signIn(email: string, password: string): Promise<UserSession | null> {
   try {
     debug('auth', 'Attempting sign in with email:', email);
@@ -56,6 +74,69 @@ export async function signIn(email: string, password: string): Promise<UserSessi
   } catch (err) {
     console.error('[AUTH] Sign in caught error:', err);
     debug('auth', 'Sign in failed:', err);
+    return null;
+  }
+}
+
+export async function signInWithGoogle(): Promise<UserSession | null> {
+  try {
+    debug('auth', 'Starting Google OAuth flow via Supabase');
+
+    const redirectUrl = chrome.identity.getRedirectURL();
+    debug('auth', 'Redirect URL:', redirectUrl);
+
+    // Delegate OAuth login to Supabase, passing the extension's redirect URL.
+    // Supabase will handle Google OAuth and redirect back to the extension with tokens.
+    const authUrl = `${SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectUrl)}`;
+
+    const responseUrl = await chrome.identity.launchWebAuthFlow({
+      url: authUrl,
+      interactive: true,
+    });
+
+    if (!responseUrl) {
+      debug('auth', 'Google OAuth cancelled by user');
+      return null;
+    }
+
+    debug('auth', 'Got response URL from Supabase');
+
+    const url = new URL(responseUrl);
+    // Parse the hash parameters from Supabase redirect (e.g., #access_token=...&refresh_token=...)
+    const hash = url.hash.substring(1);
+    const params = new URLSearchParams(hash);
+
+    const accessToken = params.get('access_token');
+    const refreshToken = params.get('refresh_token');
+    const expiresInStr = params.get('expires_in');
+
+    if (!accessToken || !refreshToken) {
+      debug('auth', 'Missing tokens in response URL');
+      return null;
+    }
+
+    const decoded = decodeJwt(accessToken);
+    if (!decoded) {
+      debug('auth', 'Failed to decode access token');
+      return null;
+    }
+
+    debug('auth', 'Google sign in success! User:', decoded.email);
+
+    const session: UserSession = {
+      userId: decoded.sub,
+      email: decoded.email,
+      accessToken,
+      refreshToken,
+      expiresAt: Date.now() + (expiresInStr ? parseInt(expiresInStr, 10) : 3600) * 1000,
+    };
+
+    await setSession(session);
+    scheduleTokenRefresh(session.expiresAt);
+    debug('auth', 'Signed in as', session.email);
+    return session;
+  } catch (err) {
+    debug('auth', 'Google sign in failed:', err);
     return null;
   }
 }
