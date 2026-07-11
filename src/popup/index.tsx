@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import './index.css';
 import { initMonitoring } from '@/shared/utils/monitoring';
+import { ErrorBoundary } from '@/shared/components/ErrorBoundary';
 
 initMonitoring('popup');
 
@@ -13,6 +14,8 @@ if (!rootEl) {
 
 createRoot(rootEl).render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary fallbackName="PopupRoot">
+      <App />
+    </ErrorBoundary>
   </React.StrictMode>,
 );
