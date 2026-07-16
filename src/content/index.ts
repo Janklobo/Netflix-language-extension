@@ -347,6 +347,12 @@ async function init(): Promise<void> {
   trackEvent('content_script_initialized', { episodeId: getEpisodeId() });
 }
 
+// Global unhandled rejection handler for content script
+window.addEventListener('unhandledrejection', (event) => {
+  debug('content', 'Unhandled promise rejection:', event.reason);
+  reportError(event.reason, { context: 'unhandledRejection' });
+});
+
 // Wrap in try/catch — never throw uncaught errors in content scripts
 init().catch((err: unknown) => {
   debug('content', 'Fatal init error:', err);

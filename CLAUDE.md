@@ -85,8 +85,8 @@ Supabase Edge Function secrets are set via `supabase secrets set` — never in `
 - [x] Phase 8  — Extension popup UI (React: auth, language selector)
 - [x] Phase 9  — Options page (React: settings)
 - [x] Phase 10 — Graceful degradation system (banner)
-- [ ] Phase 11 — Analytics (PostHog)
-- [ ] Phase 12 — Error monitoring (Sentry)
+- [x] Phase 11 — Error monitoring (Sentry) — completed 2026-07-11
+- [ ] Phase 12 — Analytics instrumentation (PostHog)
 - [ ] Phase 13 — Tests (unit + e2e)
 - [ ] Phase 14 — Build optimisation + Chrome Web Store prep
 
@@ -129,6 +129,17 @@ These are hard-won architectural insights — do NOT revert these decisions:
 - **Debounce subtitle DOM extraction.** Netflix updates subtitle DOM in multiple steps; without debounce, partial/intermediate text triggers wrong translations.
 - **Subtitle URL detection must be conservative.** Netflix CDN URLs for video/audio segments look similar to subtitle URLs. Only match `timedtext`, `.dfxp`, `.ttml`, `.vtt` patterns.
 
+### Phase 11 Implementation (July 11–16, 2026)
+Comprehensive error monitoring with Sentry browser SDK:
+- **ErrorBoundary component** wraps React components in popup and options pages, catches render errors
+- **Monitoring utility** initializes Sentry DSN from environment variables (`VITE_SENTRY_DSN`)
+- **Error reporting integrated** across all contexts:
+  - Service worker: message handler errors, token refresh failures, unhandled rejections
+  - Content script: initialization errors, subtitle handling errors, unhandled rejections
+  - Popup/Options: caught by React error boundary, reported via `reportError()`
+- **Global unhandled rejection handlers** added to service worker and content script
+- **Event context tags** — each context tagged (background-service-worker, content-script, popup, options) for easier debugging
+
 ### Bugs Fixed (June 19, 2026)
 - **Edge Function 401 — asymmetric JWT rejection** — Supabase project rotated its JWT signing key from HS256 (shared secret) to ECC P-256 (asymmetric) ~24 days prior. The `translate` Edge Function used an unpinned `@supabase/supabase-js@2`, created a client with `SUPABASE_SERVICE_ROLE_KEY`, manually extracted the Bearer token, and passed it to `getUser(token)`. This bypassed Supabase's standard auth pipeline and failed to validate the new asymmetric JWTs, returning `{"code":"UNAUTHORIZED_ASYMMETRIC_JWT","message":"Invalid JWT"}` on every translate request. Fix (in `supabase/functions/translate/index.ts`):
   1. Pinned `@supabase/supabase-js@2.49.4` (supports ECC P-256 tokens).
@@ -150,7 +161,7 @@ These are hard-won architectural insights — do NOT revert these decisions:
 - Auth is email/password only — Google OAuth2 not yet configured
 
 ### Phases Not Yet Implemented
-- Phase 11–12 (Analytics/Sentry) — SDK imports present but no event instrumentation
+- Phase 12 (Analytics instrumentation) — PostHog SDK integrated, event tracking in place for auth/translations, but missing comprehensive event instrumentation for all user interactions
 - Phase 13 (Tests) — Test infrastructure present (Vitest, Playwright) but no test cases written (except for parser, tokenizer, and translator unit tests)
 - Phase 14 (Store prep) — Build artifact ready for Web Store
 

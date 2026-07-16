@@ -130,6 +130,12 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   }
 });
 
+// Global unhandled rejection handler for service worker
+self.addEventListener('unhandledrejection', (event) => {
+  debug('sw', 'Unhandled promise rejection:', event.reason);
+  reportError(event.reason, { context: 'unhandledRejection' });
+});
+
 // Reschedule token refresh alarm on SW start/restart if session is active
 getSession()
   .then((session) => {
