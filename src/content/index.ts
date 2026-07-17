@@ -66,8 +66,17 @@ function handleTimeUpdate(currentTimeMs: number): void {
     sendToBackground({
       type: 'PREFETCH_TRANSLATIONS',
       payload: requests,
+    }).then(() => {
+      trackEvent('prefetch_completed', {
+        episodeId,
+        subtitleCount: requests.length,
+      }).catch(() => {});
     }).catch((err) => {
       debug('content', 'Prefetch message failed:', err);
+      trackEvent('prefetch_failed', {
+        episodeId,
+        error: String(err),
+      }).catch(() => {});
     });
   }
 }
@@ -94,8 +103,16 @@ async function handleSubtitleChange(observedText: string): Promise<void> {
   activeSubtitleText = text;
 
   const episodeId = getEpisodeId();
+  const startTime = performance.now();
 
   try {
+    trackEvent('translation_requested', {
+      episodeId,
+      textLength: text.length,
+      sourceLang: settings.languagePair.source,
+      targetLang: settings.languagePair.target,
+    }).catch(() => {});
+
     const resp = await sendToBackground({
       type: 'TRANSLATE',
       payload: {
@@ -113,6 +130,13 @@ async function handleSubtitleChange(observedText: string): Promise<void> {
       // Check again if subtitle changed while waiting for translation
       if (activeSubtitleText !== text) return;
 
+      const latency = performance.now() - startTime;
+      trackEvent('translation_success', {
+        episodeId,
+        latency: Math.round(latency),
+        textLength: text.length,
+      }).catch(() => {});
+
       if (settings.autoTokenize && isJapanese(text)) {
         await renderTokenizedOverlay(text, resp.payload.translatedText);
       } else {
@@ -126,11 +150,21 @@ async function handleSubtitleChange(observedText: string): Promise<void> {
     } else if (resp.type === 'ERROR') {
       debug('content', 'Translation error:', resp.payload);
       reportError(new Error(resp.payload), { context: 'handleSubtitleChange_response' });
+      trackEvent('translation_failed', {
+        episodeId,
+        error: resp.payload,
+        latency: Math.round(performance.now() - startTime),
+      }).catch(() => {});
       hideTranslation();
     }
   } catch (err) {
     debug('content', 'handleSubtitleChange failed:', err);
     reportError(err, { context: 'handleSubtitleChange_catch', episodeId, text });
+    trackEvent('translation_failed', {
+      episodeId,
+      error: String(err),
+      latency: Math.round(performance.now() - startTime),
+    }).catch(() => {});
   }
 }
 
@@ -156,7 +190,8 @@ async function renderTokenizedOverlay(
   // Replace the plain text with tokenized clickable spans
   overlay.innerHTML = '';
   const tokenContainer = renderTokenizedSubtitle(tokens, (word, reading, el) => {
-    trackEvent('word_translation_requested', { word, reading, episodeId: getEpisodeId() });
+    trackEvent('word_translation_requested', { word, reading, episodeId: getEpisodeId() }).catch(() => {});
+    trackEvent('word_popup_opened', { word, wordLength: word.length }).catch(() => {});
     showWordPopup(word, reading, el, settings!.languagePair.source, settings!.languagePair.target);
   });
   const translationLine = document.createElement('div');
@@ -192,7 +227,8 @@ function applySettings(): void {
     const sourceLang = settings.languagePair.source;
     const targetLang = settings.languagePair.target;
     setWordClickCallback(async (word, reading, clickX, clickY) => {
-      trackEvent('word_translation_requested', { word, reading, episodeId: getEpisodeId() });
+      trackEvent('word_translation_requested', { word, reading, episodeId: getEpisodeId() }).catch(() => {});
+      trackEvent('word_popup_opened', { word, wordLength: word.length }).catch(() => {});
       // Create a temporary element for positioning
       const tempEl = document.createElement('span');
       tempEl.style.position = 'fixed';
@@ -265,6 +301,10 @@ async function init(): Promise<void> {
       debug('content', `Loaded subtitle track with ${data.subtitles.length} entries`);
       subtitleTrack = data.subtitles;
       prefetchedIndices.clear();
+      trackEvent('subtitle_track_loaded', {
+        episodeId: getEpisodeId(),
+        entryCount: data.subtitles.length,
+      }).catch(() => {});
       // Prefetch starting window immediately if settings are already loaded
       handleTimeUpdate(lastCurrentTimeMs);
     }
@@ -344,7 +384,8 @@ async function init(): Promise<void> {
   });
 
   showBanner('LinguaFlix active', 3000);
-  trackEvent('content_script_initialized', { episodeId: getEpisodeId() });
+  trackEvent('content_script_initialized', { episodeId: getEpisodeId() }).catch(() => {});
+  trackEvent('degradation_banner_shown', { message: 'LinguaFlix active' }).catch(() => {});
 }
 
 // Global error handlers for content script

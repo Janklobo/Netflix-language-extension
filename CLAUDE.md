@@ -86,7 +86,7 @@ Supabase Edge Function secrets are set via `supabase secrets set` — never in `
 - [x] Phase 9  — Options page (React: settings)
 - [x] Phase 10 — Graceful degradation system (banner)
 - [x] Phase 11 — Error monitoring (Sentry) — completed 2026-07-11
-- [ ] Phase 12 — Analytics instrumentation (PostHog)
+- [x] Phase 12 — Analytics instrumentation (PostHog) — completed 2026-07-17
 - [ ] Phase 13 — Tests (unit + e2e)
 - [ ] Phase 14 — Build optimisation + Chrome Web Store prep
 
@@ -129,6 +129,46 @@ These are hard-won architectural insights — do NOT revert these decisions:
 - **Debounce subtitle DOM extraction.** Netflix updates subtitle DOM in multiple steps; without debounce, partial/intermediate text triggers wrong translations.
 - **Subtitle URL detection must be conservative.** Netflix CDN URLs for video/audio segments look similar to subtitle URLs. Only match `timedtext`, `.dfxp`, `.ttml`, `.vtt` patterns.
 
+### Phase 12 Implementation (July 17, 2026)
+Comprehensive analytics instrumentation with PostHog:
+
+**Translation Events:**
+- `translation_requested` — when translation is requested (with text length, language pair)
+- `translation_success` — when translation succeeds (with latency in ms)
+- `translation_failed` — when translation fails (with error, latency)
+- `translation_cached` — when using cached translation
+- `prefetch_completed` — when subtitle batch is pre-fetched (with count)
+- `prefetch_failed` — when pre-fetch fails
+
+**Subtitle Events:**
+- `subtitle_track_loaded` — when Netflix loads subtitle data (with entry count)
+- `subtitle_observed` — when a new subtitle appears on screen
+
+**Word Interaction Events:**
+- `word_popup_opened` — when user clicks a word (with word, length)
+- `word_popup_closed` — when popup is dismissed
+
+**Settings Events (Granular):**
+- `position_changed` — translation overlay position changed
+- `font_size_changed` — font size setting changed
+- `opacity_changed` — opacity slider moved
+- `auto_tokenize_toggled` — word tokenization enabled/disabled
+- `show_original_toggled` — original subtitle visibility changed
+- `language_pair_changed` — source/target language changed (in options)
+- `subtitle_mode_changed` — double vs click mode (in options)
+
+**Auth Events (Enhanced):**
+- `sign_in_failed` — email/password sign-in failed
+- `sign_in_error` — email/password sign-in had exception
+- `sign_in_google_failed` — Google OAuth failed
+- `sign_in_google_error` — Google OAuth had exception
+
+**Feature Events:**
+- `degradation_banner_shown` — fallback UI shown
+- `content_script_initialized` — content script loaded (with episode ID)
+
+All events are **per-context tagged** and sent to PostHog with user ID (from Supabase session).
+
 ### Phase 11 Implementation (July 11–16, 2026)
 Comprehensive error monitoring with Sentry browser SDK:
 - **ErrorBoundary component** wraps React components in popup and options pages, catches render errors
@@ -161,7 +201,6 @@ Comprehensive error monitoring with Sentry browser SDK:
 - Auth is email/password only — Google OAuth2 not yet configured
 
 ### Phases Not Yet Implemented
-- Phase 12 (Analytics instrumentation) — PostHog SDK integrated, event tracking in place for auth/translations, but missing comprehensive event instrumentation for all user interactions
 - Phase 13 (Tests) — Test infrastructure present (Vitest, Playwright) but no test cases written (except for parser, tokenizer, and translator unit tests)
 - Phase 14 (Store prep) — Build artifact ready for Web Store
 

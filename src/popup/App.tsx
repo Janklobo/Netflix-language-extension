@@ -50,9 +50,11 @@ export default function App(): React.ReactElement {
         trackEvent('sign_in_success_ui', { email: resp.payload.email }).catch(() => { });
       } else {
         setError('Sign in failed. Check your email and password.');
+        trackEvent('sign_in_failed', { reason: 'invalid_response' }).catch(() => { });
       }
     } catch (err) {
       setError('Sign in error. Please try again.');
+      trackEvent('sign_in_error', { error: String(err) }).catch(() => { });
     } finally {
       setSigningIn(false);
     }
@@ -71,9 +73,11 @@ export default function App(): React.ReactElement {
         trackEvent('sign_in_google_success_ui', { email: resp.payload.email }).catch(() => { });
       } else {
         setError('Google sign in failed. Try again.');
+        trackEvent('sign_in_google_failed', { reason: 'invalid_response' }).catch(() => { });
       }
     } catch (err) {
       setError('Google sign in error. Please try again.');
+      trackEvent('sign_in_google_error', { error: String(err) }).catch(() => { });
     } finally {
       setSigningIn(false);
     }

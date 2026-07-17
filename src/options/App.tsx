@@ -24,7 +24,33 @@ export default function App(): React.ReactElement {
     const updated = { ...settings, ...patch };
     setSettings(updated);
     await sendToBackground({ type: 'UPDATE_SETTINGS', payload: patch });
-    trackEvent('settings_updated', patch).catch(() => { });
+
+    // Track granular setting changes
+    if ('subtitleMode' in patch && patch.subtitleMode !== settings.subtitleMode) {
+      trackEvent('subtitle_mode_changed', { mode: patch.subtitleMode }).catch(() => { });
+    }
+    if ('position' in patch && patch.position !== settings.position) {
+      trackEvent('position_changed', { position: patch.position }).catch(() => { });
+    }
+    if ('fontSize' in patch && patch.fontSize !== settings.fontSize) {
+      trackEvent('font_size_changed', { fontSize: patch.fontSize }).catch(() => { });
+    }
+    if ('opacity' in patch && patch.opacity !== settings.opacity) {
+      trackEvent('opacity_changed', { opacity: patch.opacity }).catch(() => { });
+    }
+    if ('autoTokenize' in patch && patch.autoTokenize !== settings.autoTokenize) {
+      trackEvent('auto_tokenize_toggled', { enabled: patch.autoTokenize }).catch(() => { });
+    }
+    if ('showOriginal' in patch && patch.showOriginal !== settings.showOriginal) {
+      trackEvent('show_original_toggled', { enabled: patch.showOriginal }).catch(() => { });
+    }
+    if ('languagePair' in patch && patch.languagePair !== settings.languagePair) {
+      trackEvent('language_pair_changed', {
+        source: patch.languagePair?.source,
+        target: patch.languagePair?.target
+      }).catch(() => { });
+    }
+
     setSaved(true);
     setTimeout(() => setSaved(false), 1500);
   };
