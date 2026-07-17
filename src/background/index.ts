@@ -130,6 +130,12 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   }
 });
 
+// Global error handler for synchronous errors in service worker
+self.addEventListener('error', (event) => {
+  debug('sw', 'Uncaught error:', event.error || event.message);
+  reportError(event.error || new Error(event.message), { context: 'uncaughtError' });
+});
+
 // Global unhandled rejection handler for service worker
 self.addEventListener('unhandledrejection', (event) => {
   debug('sw', 'Unhandled promise rejection:', event.reason);

@@ -7,7 +7,9 @@
   "permissions": ["storage", "identity", "alarms"],
   "host_permissions": [
     "https://www.netflix.com/*",
-    "https://*.supabase.co/*"
+    "https://*.supabase.co/*",
+    "https://*.ingest.sentry.io/*",
+    "https://*.ingest.de.sentry.io/*"
   ],
 
   "background": {
