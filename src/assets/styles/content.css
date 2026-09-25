@@ -8,6 +8,12 @@
 /* Enable click-through to subtitle words in click mode */
 .linguaflix-click-mode [data-uia="player-timedtext"],
 .linguaflix-click-mode .player-timedtext {
+  pointer-events: none !important;
+}
+
+.linguaflix-click-mode [data-uia="player-timedtext"] span,
+.linguaflix-click-mode .player-timedtext span,
+.linguaflix-click-mode .player-timedtext-text-container {
   pointer-events: auto !important;
   cursor: pointer;
 }

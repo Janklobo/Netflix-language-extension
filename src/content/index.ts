@@ -278,10 +278,40 @@ function setupKeyboardShortcuts(): void {
   });
 }
 
+function isActualSubtitleElement(el: HTMLElement | null): boolean {
+  if (!el) return false;
+
+  // Secondary subtitle overlay, word popup, or tokenized words
+  if (
+    el.closest('[data-linguaflix-subtitle]') ||
+    el.closest('[data-linguaflix-popup]') ||
+    el.closest('[data-linguaflix-word]')
+  ) {
+    return true;
+  }
+
+  // Never match the full-screen timedtext wrapper container itself!
+  if (
+    el.classList.contains('player-timedtext') ||
+    el.getAttribute('data-uia') === 'player-timedtext'
+  ) {
+    return false;
+  }
+
+  // Must be inside the actual dialogue text container and have non-empty text content
+  const textContainer = el.closest('.player-timedtext-text-container');
+  if (textContainer) {
+    const text = el.textContent?.trim();
+    return Boolean(text && text.length > 0);
+  }
+
+  return false;
+}
+
 let hoverPauseTimeout: ReturnType<typeof setTimeout> | null = null;
 
 function setupSubtitleHoverTracking(): void {
-  // Listen for mouse movement over subtitle elements or word popups
+  // Listen for mouse movement over actual subtitle elements or word popups
   document.addEventListener(
     'mouseover',
     (e) => {
@@ -289,15 +319,7 @@ function setupSubtitleHoverTracking(): void {
       const target = e.target as HTMLElement | null;
       if (!target) return;
 
-      const isSubtitleOrPopup =
-        target.closest('[data-linguaflix-subtitle]') ||
-        target.closest('[data-linguaflix-popup]') ||
-        target.closest('[data-linguaflix-word]') ||
-        target.closest('[data-uia="player-timedtext"]') ||
-        target.closest('.player-timedtext') ||
-        target.closest('.player-timedtext-text-container');
-
-      if (isSubtitleOrPopup) {
+      if (isActualSubtitleElement(target)) {
         if (hoverPauseTimeout) {
           clearTimeout(hoverPauseTimeout);
           hoverPauseTimeout = null;
@@ -313,14 +335,7 @@ function setupSubtitleHoverTracking(): void {
     (e) => {
       if (!settings?.autoPauseOnHover || !wasAutoPaused) return;
       const related = e.relatedTarget as HTMLElement | null;
-      const stillInSubtitle =
-        related &&
-        (related.closest('[data-linguaflix-subtitle]') ||
-          related.closest('[data-linguaflix-popup]') ||
-          related.closest('[data-linguaflix-word]') ||
-          related.closest('[data-uia="player-timedtext"]') ||
-          related.closest('.player-timedtext') ||
-          related.closest('.player-timedtext-text-container'));
+      const stillInSubtitle = isActualSubtitleElement(related);
 
       if (!stillInSubtitle) {
         if (hoverPauseTimeout) clearTimeout(hoverPauseTimeout);
@@ -337,6 +352,7 @@ function setupSubtitleHoverTracking(): void {
     (e) => {
       if (e.code === 'Space') {
         wasAutoPaused = false;
+        hideAutoPauseBadge();
       }
     },
     { passive: true },
@@ -415,15 +431,14 @@ function applySettings(): void {
     document.documentElement.classList.add('linguaflix-hide-original');
   }
 
-  // Toggle click mode class — enables pointer-events on Netflix subtitle container
-  if (settings.subtitleMode === 'click') {
-    document.documentElement.classList.add('linguaflix-click-mode');
-  } else {
-    document.documentElement.classList.remove('linguaflix-click-mode');
-  }
+  // Enable interactive word clicking if in 'click' mode OR in Active Immersion / Listening & Shadowing presets!
+  const isClickEnabled =
+    settings.subtitleMode === 'click' ||
+    settings.learningPreset === 'active' ||
+    settings.learningPreset === 'listening';
 
-  // Set or clear word click callback based on mode
-  if (settings.subtitleMode === 'click') {
+  if (isClickEnabled) {
+    document.documentElement.classList.add('linguaflix-click-mode');
     const sourceLang = settings.languagePair.source;
     const targetLang = settings.languagePair.target;
     setWordClickCallback(async (word, reading, clickX, clickY) => {
@@ -438,9 +453,13 @@ function applySettings(): void {
       showWordPopup(word, reading, tempEl, sourceLang, targetLang);
       setTimeout(() => tempEl.remove(), 0);
     });
-    // Hide overlay when switching to click mode
-    hideTranslation();
+
+    if (settings.subtitleMode === 'click') {
+      // In exclusive click mode, hide the dual subtitle overlay
+      hideTranslation();
+    }
   } else {
+    document.documentElement.classList.remove('linguaflix-click-mode');
     setWordClickCallback(null);
     // Dismiss any word popup when switching from click mode
     removePopup();

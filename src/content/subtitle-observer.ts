@@ -136,29 +136,36 @@ function isSubtitleHitAtPoint(clickX: number, clickY: number): boolean {
     if (element.closest('[data-linguaflix-popup]') || element.closest('[data-linguaflix-subtitle]')) {
       continue;
     }
-    if (element.closest(NETFLIX_SELECTORS.SUBTITLE_CONTAINER)) {
+    // Must be inside the actual dialogue text container and have non-empty text
+    const textContainer = element.closest('.player-timedtext-text-container');
+    if (textContainer && element.textContent?.trim()) {
       return true;
     }
   }
 
-  const rect = currentContainer.getBoundingClientRect();
-  return clickX >= rect.left && clickX <= rect.right && clickY >= rect.top && clickY <= rect.bottom;
+  return false;
 }
 
 /**
  * Enable or disable pointer events on the subtitle container.
  * Netflix sets pointer-events: none so clicks pass through to the video.
- * We must override this inline to allow subtitle word clicks.
+ * We must override this inline only on actual text spans to allow word clicks.
  */
 function applyPointerEvents(container: Element, enable: boolean): void {
   const el = container as HTMLElement;
-  if (enable) {
-    el.style.setProperty('pointer-events', 'auto', 'important');
-    el.style.cursor = 'pointer';
-  } else {
-    el.style.removeProperty('pointer-events');
-    el.style.removeProperty('cursor');
-  }
+  el.style.setProperty('pointer-events', 'none', 'important');
+
+  const textContainers = container.querySelectorAll('.player-timedtext-text-container, span');
+  textContainers.forEach((item) => {
+    const htmlItem = item as HTMLElement;
+    if (enable) {
+      htmlItem.style.setProperty('pointer-events', 'auto', 'important');
+      htmlItem.style.cursor = 'pointer';
+    } else {
+      htmlItem.style.removeProperty('pointer-events');
+      htmlItem.style.removeProperty('cursor');
+    }
+  });
 }
 
 /**
