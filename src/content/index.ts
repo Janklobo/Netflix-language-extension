@@ -171,6 +171,37 @@ async function handleSubtitleChange(observedText: string): Promise<void> {
 }
 
 let wasAutoPaused = false;
+let autoPauseBadge: HTMLDivElement | null = null;
+
+function showAutoPauseBadge(): void {
+  if (autoPauseBadge) return;
+  autoPauseBadge = document.createElement('div');
+  autoPauseBadge.style.position = 'fixed';
+  autoPauseBadge.style.top = '28px';
+  autoPauseBadge.style.left = '50%';
+  autoPauseBadge.style.transform = 'translateX(-50%)';
+  autoPauseBadge.style.zIndex = '9999999';
+  autoPauseBadge.style.backgroundColor = 'rgba(28, 25, 23, 0.92)';
+  autoPauseBadge.style.color = '#FAF7EE';
+  autoPauseBadge.style.border = '1px solid rgba(225, 61, 24, 0.65)';
+  autoPauseBadge.style.padding = '6px 16px';
+  autoPauseBadge.style.borderRadius = '9999px';
+  autoPauseBadge.style.fontSize = '12px';
+  autoPauseBadge.style.fontWeight = '600';
+  autoPauseBadge.style.letterSpacing = '0.02em';
+  autoPauseBadge.style.pointerEvents = 'none';
+  autoPauseBadge.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.6)';
+  autoPauseBadge.innerHTML = '⏸ <span style="color:#E13D18;font-weight:700;">Auto-Paused</span> &nbsp;•&nbsp; Move cursor away to resume playback';
+  const target = document.fullscreenElement ?? document.body;
+  target.appendChild(autoPauseBadge);
+}
+
+function hideAutoPauseBadge(): void {
+  if (autoPauseBadge) {
+    autoPauseBadge.remove();
+    autoPauseBadge = null;
+  }
+}
 
 function handleAutoPause(): void {
   if (!settings?.autoPauseOnHover) return;
@@ -179,6 +210,7 @@ function handleAutoPause(): void {
     if (video && !video.paused) {
       video.pause();
       wasAutoPaused = true;
+      showAutoPauseBadge();
     }
   } catch (err) {
     debug('content', 'Auto pause failed:', err);
@@ -186,6 +218,7 @@ function handleAutoPause(): void {
 }
 
 function handleAutoResume(): void {
+  hideAutoPauseBadge();
   if (!settings?.autoPauseOnHover || !wasAutoPaused) return;
   try {
     const video = document.querySelector('video');

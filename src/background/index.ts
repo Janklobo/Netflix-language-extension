@@ -85,9 +85,9 @@ async function handleMessage(message: ExtensionMessage): Promise<ExtensionRespon
     case 'UPDATE_SETTINGS': {
       await setSettings(message.payload);
       try {
-        const tabs = await chrome.tabs.query({ url: 'https://www.netflix.com/*' });
+        const tabs = await chrome.tabs.query({});
         for (const tab of tabs) {
-          if (tab.id) {
+          if (tab.id && tab.url && tab.url.includes('netflix.com')) {
             chrome.tabs.sendMessage(tab.id, { type: 'SETTINGS_UPDATED' }).catch(() => {
               // Ignore error if content script is not injected in this tab yet
             });
