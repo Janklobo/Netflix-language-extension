@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { sendToBackground } from '@/shared/utils/message';
 import type { UserSettings, ExtensionResponse, LearningPreset } from '@/shared/types/extension.types';
 import { exportAnkiTsv } from '@/shared/utils/storage';
+import { SUPPORTED_LANGUAGES, SOURCE_LANGUAGES } from '@/shared/constants/languages';
 
 interface VocabCardItem {
   id: string;
@@ -129,7 +130,6 @@ export default function App(): React.ReactElement {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [previewPaused, setPreviewPaused] = useState(false);
   const [showLexicon, setShowLexicon] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState<'es' | 'fr' | 'de' | 'ja' | 'ko'>('es');
   const [activeVocabFilter, setActiveVocabFilter] = useState<'all' | 'es' | 'fr' | 'de'>('all');
   const [vocabSearchQuery, setVocabSearchQuery] = useState('');
   const [vocabCards] = useState<VocabCardItem[]>(INITIAL_VOCAB_CARDS);
@@ -357,7 +357,10 @@ export default function App(): React.ReactElement {
                   <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
                   <span className="text-xs font-bold text-[#1C1917]">Active Session Profile</span>
                   <span className="text-[#D9D0BE]">•</span>
-                  <span className="text-xs text-[#78716C] font-medium">Spanish (Castilian) → English (US)</span>
+                  <span className="text-xs text-[#78716C] font-medium">
+                    {SOURCE_LANGUAGES.find((l) => l.code === (settings.languagePair?.source || 'auto'))?.name || 'Auto-Detect'} →{' '}
+                    {SUPPORTED_LANGUAGES.find((l) => l.code === (settings.languagePair?.target || 'en'))?.name || 'English'}
+                  </span>
                 </div>
                 <button
                   type="button"
@@ -752,32 +755,47 @@ export default function App(): React.ReactElement {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Source Audio */}
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-[#1C1917]">Netflix Spoken Audio</label>
+                    <label className="text-xs font-bold text-[#1C1917]">Netflix Spoken Audio (Source)</label>
                     <select
-                      value={selectedLanguage}
+                      value={settings.languagePair?.source || 'auto'}
                       onChange={(e) => {
-                        const val = e.target.value as 'es' | 'fr' | 'de' | 'ja' | 'ko';
-                        setSelectedLanguage(val);
-                        handleUpdateSetting({ targetLanguage: val });
+                        const newSource = e.target.value;
+                        handleUpdateSetting({
+                          languagePair: { source: newSource, target: settings.languagePair?.target || 'en' },
+                          targetLanguage: newSource,
+                        });
+                        triggerToast(`Audio source updated to ${SOURCE_LANGUAGES.find((l) => l.code === newSource)?.name || newSource}`);
                       }}
                       className="w-full py-2.5 px-3.5 rounded-xl bg-[#FAF7EE] border border-[#E8E2D3] text-xs font-semibold text-[#1C1917] focus:outline-none focus:border-[#E13D18] cursor-pointer"
                     >
-                      <option value="es">Spanish (Español) 🇪🇸</option>
-                      <option value="fr">French (Français) 🇫🇷</option>
-                      <option value="de">German (Deutsch) 🇩🇪</option>
-                      <option value="ja">Japanese (日本語) 🇯🇵</option>
-                      <option value="ko">Korean (한국어) 🇰🇷</option>
+                      {SOURCE_LANGUAGES.map((lang) => (
+                        <option key={lang.code} value={lang.code}>
+                          {lang.flag} {lang.name} ({lang.nativeName})
+                        </option>
+                      ))}
                     </select>
                   </div>
 
                   {/* Target Lang */}
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-[#1C1917]">Translate Into</label>
-                    <select className="w-full py-2.5 px-3.5 rounded-xl bg-[#FAF7EE] border border-[#E8E2D3] text-xs font-semibold text-[#1C1917] focus:outline-none focus:border-[#E13D18] cursor-pointer">
-                      <option value="en-us">English (US) 🇺🇸</option>
-                      <option value="en-gb">English (UK) 🇬🇧</option>
-                      <option value="fr">French (Français) 🇫🇷</option>
-                      <option value="pt">Portuguese (Português) 🇧🇷</option>
+                    <label className="text-xs font-bold text-[#1C1917]">Translate Subtitles Into (Target)</label>
+                    <select
+                      value={settings.languagePair?.target || 'en'}
+                      onChange={(e) => {
+                        const newTarget = e.target.value;
+                        handleUpdateSetting({
+                          languagePair: { source: settings.languagePair?.source || 'auto', target: newTarget },
+                          nativeLanguage: newTarget,
+                        });
+                        triggerToast(`Target translation set to ${SUPPORTED_LANGUAGES.find((l) => l.code === newTarget)?.name || newTarget}`);
+                      }}
+                      className="w-full py-2.5 px-3.5 rounded-xl bg-[#FAF7EE] border border-[#E8E2D3] text-xs font-semibold text-[#1C1917] focus:outline-none focus:border-[#E13D18] cursor-pointer"
+                    >
+                      {SUPPORTED_LANGUAGES.map((lang) => (
+                        <option key={lang.code} value={lang.code}>
+                          {lang.flag} {lang.name} ({lang.nativeName})
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -787,12 +805,12 @@ export default function App(): React.ReactElement {
                   <div className="flex items-center gap-3">
                     <span className="text-[#E13D18] text-lg font-bold">🌐</span>
                     <div>
-                      <p className="text-xs font-bold text-[#1C1917]">Dictionary Engine</p>
-                      <p className="text-[11px] text-[#78716C]">Collins Bilingual Academic + DeepL Neural Lexicon</p>
+                      <p className="text-xs font-bold text-[#1C1917]">Translation &amp; Click-To-Translate Engine</p>
+                      <p className="text-[11px] text-[#78716C]">Universal Unicode &amp; Google Cloud Translation v2 (45+ Languages Active)</p>
                     </div>
                   </div>
                   <span className="px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-200">
-                    Active • Synced
+                    Active • 45+ Languages
                   </span>
                 </div>
               </div>

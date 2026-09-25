@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { sendToBackground } from '@/shared/utils/message';
 import type { UserSession, UserSettings, ExtensionResponse, SavedWord, LearningPreset } from '@/shared/types/extension.types';
 import { exportAnkiTsv } from '@/shared/utils/storage';
+import { SUPPORTED_LANGUAGES, SOURCE_LANGUAGES } from '@/shared/constants/languages';
 
 export default function App(): React.ReactElement {
   const [activeTab, setActiveTab] = useState<'presets' | 'controls' | 'saved'>('presets');
@@ -232,15 +233,11 @@ export default function App(): React.ReactElement {
                       }}
                       className="text-xs font-semibold text-[#1C1917] bg-transparent border-none p-0 focus:outline-none cursor-pointer w-full"
                     >
-                      <option value="auto">✨ Auto-Detect</option>
-                      <option value="es">🇪🇸 Spanish</option>
-                      <option value="ja">🇯🇵 Japanese</option>
-                      <option value="fr">🇫🇷 French</option>
-                      <option value="de">🇩🇪 German</option>
-                      <option value="it">🇮🇹 Italian</option>
-                      <option value="ko">🇰🇷 Korean</option>
-                      <option value="zh">🇨🇳 Chinese</option>
-                      <option value="pt">🇵🇹 Portuguese</option>
+                      {SOURCE_LANGUAGES.map((lang) => (
+                        <option key={lang.code} value={lang.code} className="bg-white text-[#1C1917]">
+                          {lang.flag} {lang.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -265,14 +262,11 @@ export default function App(): React.ReactElement {
                       }}
                       className="text-xs font-semibold text-[#1C1917] bg-transparent border-none p-0 focus:outline-none cursor-pointer w-full"
                     >
-                      <option value="en">🇺🇸 English</option>
-                      <option value="es">🇪🇸 Spanish</option>
-                      <option value="fr">🇫🇷 French</option>
-                      <option value="de">🇩🇪 German</option>
-                      <option value="it">🇮🇹 Italian</option>
-                      <option value="ja">🇯🇵 Japanese</option>
-                      <option value="pt">🇧🇷 Portuguese</option>
-                      <option value="pl">🇵🇱 Polish</option>
+                      {SUPPORTED_LANGUAGES.map((lang) => (
+                        <option key={lang.code} value={lang.code} className="bg-white text-[#1C1917]">
+                          {lang.flag} {lang.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>

@@ -149,11 +149,49 @@ function getOffsetWithinTextNode(textNode: Text, clickX: number, clickY: number)
   return -1;
 }
 
+interface SegmentItem {
+  segment: string;
+  index: number;
+  input?: string;
+  isWordLike?: boolean;
+}
+
+interface SegmenterInstance {
+  segment(input: string): Iterable<SegmentItem>;
+}
+
+interface SegmenterConstructor {
+  new (locales?: string | string[], options?: { granularity?: 'grapheme' | 'word' | 'sentence' }): SegmenterInstance;
+}
+
 /**
- * Extract word from non-Japanese text using word boundary detection.
+ * Extract word from non-Japanese text using word boundary detection or Intl.Segmenter.
  */
 function extractNonJapaneseWord(text: string, offset: number): ExtractedWord | null {
-  // Split by word boundaries (spaces, punctuation)
+  // Use browser native Intl.Segmenter if available (handles Chinese, Thai, European, and Arabic words accurately)
+  const intlObj = Intl as unknown as { Segmenter?: SegmenterConstructor };
+  if (typeof intlObj.Segmenter === 'function') {
+    try {
+      const segmenter = new intlObj.Segmenter(undefined, { granularity: 'word' });
+      for (const seg of segmenter.segment(text)) {
+        const segEnd = seg.index + seg.segment.length;
+        if (offset >= seg.index && offset < segEnd) {
+          if (seg.isWordLike === false || /^[\s\p{P}]+$/u.test(seg.segment)) {
+            return null;
+          }
+          const trimmed = seg.segment.trim();
+          if (trimmed) {
+            debug('word-extractor', 'Extracted word via Intl.Segmenter:', trimmed);
+            return { word: trimmed };
+          }
+        }
+      }
+    } catch (err) {
+      debug('word-extractor', 'Intl.Segmenter error, falling back to regex:', err);
+    }
+  }
+
+  // Fallback: Split by word boundaries (spaces, punctuation)
   const words = text.split(/([\s\p{P}])/u);
 
   let currentOffset = 0;
