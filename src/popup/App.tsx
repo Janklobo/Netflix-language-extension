@@ -89,21 +89,18 @@ export default function App(): React.ReactElement {
         learningPreset: 'casual',
         autoPauseOnHover: false,
         blurSecondaryUntilHover: false,
-        subtitleMode: 'double',
       };
     } else if (preset === 'active') {
       partial = {
         learningPreset: 'active',
         autoPauseOnHover: true,
         blurSecondaryUntilHover: false,
-        subtitleMode: 'double',
       };
     } else if (preset === 'listening') {
       partial = {
         learningPreset: 'listening',
         autoPauseOnHover: true,
         blurSecondaryUntilHover: true,
-        subtitleMode: 'double',
       };
     }
     handleUpdateSetting(partial);
@@ -306,8 +303,23 @@ export default function App(): React.ReactElement {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-[#1C1917]">Casual Watcher</h4>
-                    <span className="text-[9px] font-medium text-[#A8A29E]">Relaxed</span>
+                    <div className="flex items-center gap-1.5">
+                      <h4 className="text-xs font-bold text-[#1C1917]">Casual Watcher</h4>
+                      {settings.learningPreset === 'casual' && (
+                        <span className="text-[9px] bg-emerald-600 text-white font-bold px-1.5 py-0.2 rounded-full uppercase tracking-wider">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    {settings.learningPreset === 'casual' ? (
+                      <div className="w-4 h-4 rounded-full bg-emerald-600 flex items-center justify-center text-white">
+                        <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3.5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    ) : (
+                      <span className="text-[9px] font-medium text-[#A8A29E]">Relaxed</span>
+                    )}
                   </div>
                   <p className="text-[11px] text-[#57534E] leading-snug mt-0.5">
                     Simultaneous dual subtitles for natural, relaxed viewing without video pauses.
@@ -371,8 +383,23 @@ export default function App(): React.ReactElement {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-[#1C1917]">Listening & Shadowing</h4>
-                    <span className="text-[9px] font-medium text-[#A8A29E]">Advanced</span>
+                    <div className="flex items-center gap-1.5">
+                      <h4 className="text-xs font-bold text-[#1C1917]">Listening & Shadowing</h4>
+                      {settings.learningPreset === 'listening' && (
+                        <span className="text-[9px] bg-sky-600 text-white font-bold px-1.5 py-0.2 rounded-full uppercase tracking-wider">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    {settings.learningPreset === 'listening' ? (
+                      <div className="w-4 h-4 rounded-full bg-sky-600 flex items-center justify-center text-white">
+                        <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3.5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    ) : (
+                      <span className="text-[9px] font-medium text-[#A8A29E]">Advanced</span>
+                    )}
                   </div>
                   <p className="text-[11px] text-[#57534E] leading-snug mt-0.5">
                     Secondary subtitle is blurred until cursor hover so your ears do the heavy lifting.

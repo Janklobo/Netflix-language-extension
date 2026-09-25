@@ -126,16 +126,17 @@
 /* ── Listening / Shadowing Blurred Mode ──────────────────────────────────── */
 
 [data-linguaflix-subtitle].linguaflix-blurred {
-  filter: blur(6px);
-  opacity: 0.6;
-  transition: filter 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  pointer-events: auto;
-  cursor: pointer;
+  filter: blur(7px) !important;
+  opacity: 0.65 !important;
+  transition: filter 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  user-select: none !important;
 }
 
 [data-linguaflix-subtitle].linguaflix-blurred:hover {
-  filter: blur(0px);
-  opacity: 1;
+  filter: blur(0px) !important;
+  opacity: 1 !important;
 }
 
 /* ── Save Word Button in Popup ───────────────────────────────────────────── */

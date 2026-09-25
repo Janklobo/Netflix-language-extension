@@ -118,7 +118,11 @@ export async function getSettings(): Promise<UserSettings> {
 
 export async function setSettings(settings: Partial<UserSettings>): Promise<void> {
   const current = await getSettings();
-  await storageDriver.set({ [SETTINGS_KEY]: { ...current, ...settings } });
+  const updated = { ...current, ...settings };
+  await storageDriver.set({ [SETTINGS_KEY]: updated });
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('linguaflix_settings_changed', { detail: updated }));
+  }
 }
 
 export async function getCachedTranslation(cacheKey: string): Promise<string | null> {

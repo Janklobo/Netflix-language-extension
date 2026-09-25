@@ -60,8 +60,18 @@ export function updateBlur(blurred?: boolean): void {
   if (!overlayEl) return;
   if (blurred) {
     overlayEl.classList.add('linguaflix-blurred');
+    overlayEl.style.filter = 'blur(7px)';
+    overlayEl.style.opacity = '0.65';
+    overlayEl.style.cursor = 'pointer';
+    overlayEl.style.pointerEvents = 'auto';
+    overlayEl.title = 'Hover to reveal translation (Listening & Shadowing Mode)';
   } else {
     overlayEl.classList.remove('linguaflix-blurred');
+    overlayEl.style.filter = 'none';
+    overlayEl.style.opacity = '1';
+    overlayEl.style.cursor = 'default';
+    overlayEl.style.pointerEvents = 'auto';
+    overlayEl.removeAttribute('title');
   }
 }
 
@@ -88,7 +98,7 @@ function createOverlay(): HTMLDivElement {
   el.style.color = '#FFFFFF';
   el.style.fontWeight = '600';
   el.style.textAlign = 'center';
-  el.style.pointerEvents = 'none';
+  el.style.pointerEvents = 'auto';
   el.style.borderRadius = '12px';
   el.style.padding = '8px 20px 10px';
   el.style.maxWidth = '85vw';
@@ -96,6 +106,31 @@ function createOverlay(): HTMLDivElement {
   el.style.backgroundColor = 'rgba(0, 0, 0, 0.82)';
   el.style.border = '1px solid rgba(255, 255, 255, 0.15)';
   el.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.5)';
+  el.style.transition = 'filter 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
+
+  el.addEventListener('mouseenter', () => {
+    if (el.classList.contains('linguaflix-blurred')) {
+      el.style.filter = 'none';
+      el.style.opacity = '1';
+    }
+  });
+
+  el.addEventListener('mouseleave', () => {
+    if (el.classList.contains('linguaflix-blurred')) {
+      el.style.filter = 'blur(7px)';
+      el.style.opacity = '0.65';
+    }
+  });
+
+  el.addEventListener('click', (e) => {
+    if (el.classList.contains('linguaflix-blurred')) {
+      e.stopPropagation();
+      const isCurrentlyClear = el.style.filter === 'none';
+      el.style.filter = isCurrentlyClear ? 'blur(7px)' : 'none';
+      el.style.opacity = isCurrentlyClear ? '0.65' : '1';
+    }
+  });
+
   return el;
 }
 

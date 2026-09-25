@@ -112,6 +112,17 @@ export function NetflixSimulator(): React.ReactElement {
       setSettingsState(s);
       setIsBlurred(s.blurSecondaryUntilHover ?? true);
     });
+
+    const handleSettingsChange = (e: Event) => {
+      const customEvent = e as CustomEvent<UserSettings>;
+      if (customEvent.detail) {
+        setSettingsState(customEvent.detail);
+        setIsBlurred(customEvent.detail.blurSecondaryUntilHover ?? false);
+      }
+    };
+
+    window.addEventListener('linguaflix_settings_changed', handleSettingsChange);
+    return () => window.removeEventListener('linguaflix_settings_changed', handleSettingsChange);
   }, []);
 
   // Keyboard shortcut support

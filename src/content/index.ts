@@ -1,7 +1,7 @@
 import { sendToBackground } from '@/shared/utils/message';
 import { debug } from '@/shared/utils/debug';
 import { startObserving, stopObserving, setWordClickCallback } from './subtitle-observer';
-import { showTranslation, hideTranslation, removeOverlay } from './subtitle-injector';
+import { showTranslation, hideTranslation, removeOverlay, updateBlur } from './subtitle-injector';
 import { showWordPopup, renderTokenizedSubtitle, removePopup } from './translation-popup';
 import { showBanner, removeBanner } from './degradation-banner';
 import { tokenize, isJapanese, getTokenizer } from './word-tokenizer';
@@ -238,10 +238,76 @@ function setupKeyboardShortcuts(): void {
       e.preventDefault();
       const overlay = document.querySelector('[data-linguaflix-subtitle]') as HTMLDivElement | null;
       if (overlay) {
-        overlay.classList.toggle('linguaflix-blurred');
+        const isCurrentlyBlurred = overlay.classList.contains('linguaflix-blurred');
+        updateBlur(!isCurrentlyBlurred);
       }
     }
   });
+}
+
+let hoverPauseTimeout: ReturnType<typeof setTimeout> | null = null;
+
+function setupSubtitleHoverTracking(): void {
+  // Listen for mouse movement over subtitle elements or word popups
+  document.addEventListener(
+    'mouseover',
+    (e) => {
+      if (!settings?.autoPauseOnHover) return;
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+
+      const isSubtitleOrPopup =
+        target.closest('[data-linguaflix-subtitle]') ||
+        target.closest('[data-linguaflix-popup]') ||
+        target.closest('[data-linguaflix-word]') ||
+        target.closest('[data-uia="player-timedtext"]') ||
+        target.closest('.player-timedtext') ||
+        target.closest('.player-timedtext-text-container');
+
+      if (isSubtitleOrPopup) {
+        if (hoverPauseTimeout) {
+          clearTimeout(hoverPauseTimeout);
+          hoverPauseTimeout = null;
+        }
+        handleAutoPause();
+      }
+    },
+    { passive: true },
+  );
+
+  document.addEventListener(
+    'mouseout',
+    (e) => {
+      if (!settings?.autoPauseOnHover || !wasAutoPaused) return;
+      const related = e.relatedTarget as HTMLElement | null;
+      const stillInSubtitle =
+        related &&
+        (related.closest('[data-linguaflix-subtitle]') ||
+          related.closest('[data-linguaflix-popup]') ||
+          related.closest('[data-linguaflix-word]') ||
+          related.closest('[data-uia="player-timedtext"]') ||
+          related.closest('.player-timedtext') ||
+          related.closest('.player-timedtext-text-container'));
+
+      if (!stillInSubtitle) {
+        if (hoverPauseTimeout) clearTimeout(hoverPauseTimeout);
+        hoverPauseTimeout = setTimeout(() => {
+          handleAutoResume();
+        }, 150);
+      }
+    },
+    { passive: true },
+  );
+
+  window.addEventListener(
+    'keydown',
+    (e) => {
+      if (e.code === 'Space') {
+        wasAutoPaused = false;
+      }
+    },
+    { passive: true },
+  );
 }
 
 async function renderTokenizedOverlay(
@@ -376,6 +442,9 @@ function applySettings(): void {
       // Sync opacity
       const alpha = typeof settings.opacity === 'number' ? settings.opacity / 100 : 0.78;
       overlay.style.backgroundColor = `rgba(0, 0, 0, ${alpha})`;
+
+      // Immediately sync blur state on visible overlay
+      updateBlur(settings.blurSecondaryUntilHover);
     } else {
       overlay.style.display = 'none';
     }
@@ -452,6 +521,7 @@ async function init(): Promise<void> {
   debug('content', 'Starting subtitle observer');
 
   setupKeyboardShortcuts();
+  setupSubtitleHoverTracking();
 
   // Pre-warm the kuromoji tokenizer in the background
   if (settings?.autoTokenize) {
@@ -470,6 +540,7 @@ async function init(): Promise<void> {
     if (msg.type === 'SETTINGS_UPDATED') {
       const oldLanguagePair = settings?.languagePair;
       const oldMode = settings?.subtitleMode;
+      const oldPreset = settings?.learningPreset;
       sendToBackground({ type: 'GET_SETTINGS' })
         .then((resp: ExtensionResponse) => {
           if (resp.type === 'SETTINGS') {
@@ -479,9 +550,21 @@ async function init(): Promise<void> {
               oldLanguagePair.source !== newSettings.languagePair.source ||
               oldLanguagePair.target !== newSettings.languagePair.target;
             const modeChanged = oldMode !== newSettings.subtitleMode;
+            const presetChanged = oldPreset !== newSettings.learningPreset;
 
             settings = newSettings;
             applySettings();
+
+            if (presetChanged) {
+              const presetLabels: Record<string, string> = {
+                casual: '🍿 Casual Watcher (Relaxed)',
+                active: '⚡ Active Immersion (Auto-pause on hover)',
+                listening: '🎧 Listening & Shadowing (Blurred until hover)',
+              };
+              showBanner(presetLabels[newSettings.learningPreset] || `${newSettings.learningPreset} mode`, 2500);
+            } else if (modeChanged) {
+              showBanner(newSettings.subtitleMode === 'double' ? '💬 Dual Subtitles enabled' : '📝 Click to Translate enabled', 2500);
+            }
 
             if (languageChanged || (modeChanged && newSettings.subtitleMode === 'double')) {
               prefetchedIndices.clear();

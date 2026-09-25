@@ -164,15 +164,13 @@ export default function App(): React.ReactElement {
         learningPreset: 'casual',
         autoPauseOnHover: false,
         blurSecondaryUntilHover: false,
-        subtitleMode: 'double',
       };
       triggerToast('Preset switched to Casual Watcher');
     } else if (preset === 'active') {
       patch = {
         learningPreset: 'active',
         autoPauseOnHover: true,
-        blurSecondaryUntilHover: true,
-        subtitleMode: 'double',
+        blurSecondaryUntilHover: false,
       };
       triggerToast('Preset switched to Active Immersion');
     } else if (preset === 'listening') {
@@ -180,9 +178,8 @@ export default function App(): React.ReactElement {
         learningPreset: 'listening',
         autoPauseOnHover: true,
         blurSecondaryUntilHover: true,
-        subtitleMode: 'double',
       };
-      triggerToast('Preset switched to Shadowing Mode');
+      triggerToast('Preset switched to Listening & Shadowing Mode');
     }
     handleUpdateSetting(patch);
   };
