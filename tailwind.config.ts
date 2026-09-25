@@ -1,37 +1,48 @@
 import type { Config } from 'tailwindcss';
 
 const config: Config = {
-  // Only scan popup and options pages — content scripts use hand-written CSS
-  // to avoid Tailwind's reset stylesheet leaking into Netflix's styles.
   content: [
-    './src/popup/**/*.{ts,tsx}',
-    './src/options/**/*.{ts,tsx}',
+    './index.html',
+    './src/**/*.{ts,tsx,html}',
   ],
   theme: {
     extend: {
       colors: {
-        // LinguaFlix brand palette derived from Tailwind indigo
+        butter: {
+          50: '#FAF7EE',
+          100: '#F4EFE0',
+          200: '#E8E2D3',
+          300: '#D9D0BE',
+        },
+        burnt: {
+          DEFAULT: '#E13D18',
+          hover: '#C73412',
+          soft: '#FDEEE9',
+        },
+        espresso: '#1C1917',
+        stonecustom: {
+          400: '#A8A29E',
+          500: '#78716C',
+          600: '#57534E',
+          700: '#44403C',
+        },
         brand: {
-          50:  '#eef2ff',
-          100: '#e0e7ff',
-          500: '#6366f1',
-          600: '#4f46e5',
-          700: '#4338ca',
-          900: '#312e81',
-          950: '#1e1b4b',
+          orange: '#E13D18',
+          orangeDark: '#C23211',
+          honey: '#FEF3C7',
+          honeyText: '#B45309',
+          slateText: '#57534E',
+          charcoal: '#1C1917',
+          ivory: '#FFFDF8',
+          cardBorder: '#E8E2D3',
         },
       },
       fontFamily: {
-        // System font stack — no font downloads in an extension
-        sans: [
-          '-apple-system',
-          'BlinkMacSystemFont',
-          '"Segoe UI"',
-          'Roboto',
-          'Helvetica',
-          'Arial',
-          'sans-serif',
-        ],
+        sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        serif: ['"Newsreader"', 'Georgia', 'serif'],
+        display: ['"Newsreader"', 'Georgia', 'serif'],
+        outfit: ['"Outfit"', 'sans-serif'],
+        inter: ['"Inter"', 'sans-serif'],
       },
     },
   },

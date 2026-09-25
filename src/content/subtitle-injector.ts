@@ -34,6 +34,8 @@ export function showTranslation(
   position: 'above' | 'below',
   fontSize?: 'small' | 'medium' | 'large',
   opacity?: number,
+  blurUntilHover?: boolean,
+  smartCollision?: boolean,
 ): void {
   if (!overlayEl) {
     overlayEl = createOverlay();
@@ -48,9 +50,19 @@ export function showTranslation(
   ensureAttached();
   overlayEl.textContent = translatedText;
   overlayEl.style.display = 'block';
-  updatePosition(position);
+  updatePosition(position, smartCollision);
   updateFontSize(fontSize);
   updateOpacity(opacity);
+  updateBlur(blurUntilHover);
+}
+
+export function updateBlur(blurred?: boolean): void {
+  if (!overlayEl) return;
+  if (blurred) {
+    overlayEl.classList.add('linguaflix-blurred');
+  } else {
+    overlayEl.classList.remove('linguaflix-blurred');
+  }
 }
 
 export function hideTranslation(): void {
@@ -72,7 +84,20 @@ function createOverlay(): HTMLDivElement {
   return el;
 }
 
-function updatePosition(position: 'above' | 'below'): void {
+function isNetflixControlsVisible(): boolean {
+  try {
+    const controls = document.querySelector(
+      '.watch-video--bottom-controls-container, .PlayerControls--bottom-controls, .controls-active, .active',
+    );
+    if (!controls) return false;
+    const style = window.getComputedStyle(controls);
+    return style.display !== 'none' && style.visibility !== 'hidden' && parseFloat(style.opacity || '1') > 0.1;
+  } catch {
+    return false;
+  }
+}
+
+function updatePosition(position: 'above' | 'below', smartCollision?: boolean): void {
   if (!overlayEl) return;
 
   overlayEl.style.position = 'fixed';
@@ -80,12 +105,14 @@ function updatePosition(position: 'above' | 'below'): void {
   overlayEl.style.transform = 'translateX(-50%)';
   overlayEl.style.top = 'auto';
 
+  const hasCollision = smartCollision && isNetflixControlsVisible();
+
   if (position === 'above') {
     // Above the Netflix subtitle area
-    overlayEl.style.bottom = '22%';
+    overlayEl.style.bottom = hasCollision ? '28%' : '22%';
   } else {
     // Below the Netflix subtitle area
-    overlayEl.style.bottom = '6%';
+    overlayEl.style.bottom = hasCollision ? '12%' : '6%';
   }
 }
 

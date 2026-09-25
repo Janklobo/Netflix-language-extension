@@ -17,7 +17,7 @@
 [data-linguaflix-popup],
 [data-linguaflix-banner] {
   box-sizing: border-box;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Plus Jakarta Sans', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
 /* ── Translated subtitle overlay ─────────────────────────────────────────── */
@@ -25,21 +25,22 @@
 [data-linguaflix-subtitle] {
   display: block;
   text-align: center;
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 600;
   color: #ffffff;
   text-shadow:
-    0 0 6px #000,
-    0 0 6px #000,
-    0 0 6px #000;
-  background: rgba(0, 0, 0, 0.78);
-  padding: 6px 18px 8px;
-  border-radius: 6px;
+    0 1px 4px rgba(0, 0, 0, 0.9),
+    0 2px 8px rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.82);
+  padding: 8px 20px 10px;
+  border-radius: 12px;
   pointer-events: none;
-  line-height: 1.5;
-  max-width: 80vw;
+  line-height: 1.45;
+  max-width: 82vw;
   white-space: pre-wrap;
   z-index: 99997;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
 
 /* ── Clickable word spans ─────────────────────────────────────────────────── */
@@ -47,14 +48,19 @@
 [data-linguaflix-word] {
   pointer-events: auto;
   cursor: pointer;
-  border-bottom: 1px dotted rgba(165, 180, 252, 0.7);
-  transition: background 0.1s;
-  border-radius: 2px;
-  padding: 0 1px;
+  border-bottom: 2px solid rgba(225, 61, 24, 0.5);
+  transition: all 0.12s ease;
+  border-radius: 4px;
+  padding: 2px 4px;
 }
 
-[data-linguaflix-word]:hover {
-  background: rgba(99, 102, 241, 0.35);
+[data-linguaflix-word]:hover,
+[data-linguaflix-word].linguaflix-active-word {
+  background: #FEF3C7 !important;
+  color: #1C1917 !important;
+  border-bottom: 2px solid #E13D18 !important;
+  text-shadow: none !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
 /* ── Word translation popup ───────────────────────────────────────────────── */
@@ -62,18 +68,104 @@
 [data-linguaflix-popup] {
   position: fixed;
   z-index: 999999;
-  background: rgba(12, 12, 18, 0.96);
-  border: 1px solid rgba(99, 102, 241, 0.45);
-  border-radius: 10px;
-  padding: 12px 16px;
-  color: #f3f4f6;
+  background: #FFFDF8;
+  border: 1px solid #E8E2D3;
+  border-radius: 16px;
+  padding: 14px 18px;
+  color: #1C1917;
   font-size: 14px;
-  max-width: 280px;
+  max-width: 320px;
   box-shadow:
-    0 4px 24px rgba(0, 0, 0, 0.6),
-    0 0 0 1px rgba(99, 102, 241, 0.1);
+    0 20px 40px rgba(0, 0, 0, 0.35),
+    0 2px 10px rgba(0, 0, 0, 0.15);
   pointer-events: auto;
   line-height: 1.5;
+}
+
+[data-linguaflix-popup] .headword {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1C1917;
+}
+
+[data-linguaflix-popup] .reading-badge {
+  display: inline-block;
+  background: #FEF3C7;
+  color: #B45309;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 1px solid #FDE68A;
+  margin-left: 6px;
+}
+
+[data-linguaflix-popup] .definition {
+  margin-top: 8px;
+  color: #059669;
+  font-weight: 700;
+  font-size: 13.5px;
+}
+
+/* ── Furigana Ruby Text ─────────────────────────────────────────────────── */
+
+[data-linguaflix-subtitle] ruby {
+  ruby-align: center;
+}
+
+[data-linguaflix-subtitle] rt {
+  font-size: 0.52em;
+  color: #FEF3C7;
+  font-weight: 500;
+  line-height: 1;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
+  user-select: none;
+}
+
+/* ── Listening / Shadowing Blurred Mode ──────────────────────────────────── */
+
+[data-linguaflix-subtitle].linguaflix-blurred {
+  filter: blur(6px);
+  opacity: 0.6;
+  transition: filter 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+[data-linguaflix-subtitle].linguaflix-blurred:hover {
+  filter: blur(0px);
+  opacity: 1;
+}
+
+/* ── Save Word Button in Popup ───────────────────────────────────────────── */
+
+.linguaflix-save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #E13D18;
+  color: #ffffff;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 8px rgba(225, 61, 24, 0.25);
+}
+
+.linguaflix-save-btn:hover {
+  background: #C73412;
+  box-shadow: 0 4px 12px rgba(225, 61, 24, 0.35);
+}
+
+.linguaflix-save-btn.saved {
+  background: #059669;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25);
 }
 
 /* ── Degradation warning banner ──────────────────────────────────────────── */
@@ -84,13 +176,14 @@
   left: 50%;
   transform: translateX(-50%);
   z-index: 999998;
-  background: rgba(99, 102, 241, 0.88);
-  color: white;
+  background: #1C1917;
+  border: 1px solid #E13D18;
+  color: #FAF7EE;
   padding: 6px 18px;
   border-radius: 20px;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 600;
   pointer-events: none;
   white-space: nowrap;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }

@@ -1,7 +1,7 @@
 import type { ExtensionMessage, ExtensionResponse } from '@/shared/types/extension.types';
 import { signIn, signInWithGoogle, signOut, refreshSession } from './auth-manager';
 import { translate, prefetch } from './translator';
-import { getSession, getSettings, setSettings } from '@/shared/utils/storage';
+import { getSession, getSettings, setSettings, getSavedWords, saveWord, deleteSavedWord, exportAnkiTsv } from '@/shared/utils/storage';
 import { TOKEN_REFRESH_ALARM } from '@/shared/constants/cache';
 import { debug } from '@/shared/utils/debug';
 import { initMonitoring, reportError } from '@/shared/utils/monitoring';
@@ -108,6 +108,28 @@ async function handleMessage(message: ExtensionMessage): Promise<ExtensionRespon
     case 'PREFETCH_TRANSLATIONS': {
       await prefetch(message.payload);
       return { type: 'OK' };
+    }
+
+    case 'SAVE_WORD': {
+      await saveWord(message.payload);
+      const allWords = await getSavedWords();
+      return { type: 'SAVED_WORDS', payload: allWords };
+    }
+
+    case 'GET_SAVED_WORDS': {
+      const words = await getSavedWords();
+      return { type: 'SAVED_WORDS', payload: words };
+    }
+
+    case 'DELETE_SAVED_WORD': {
+      await deleteSavedWord(message.payload.id);
+      const remaining = await getSavedWords();
+      return { type: 'SAVED_WORDS', payload: remaining };
+    }
+
+    case 'EXPORT_ANKI': {
+      const tsv = await exportAnkiTsv();
+      return { type: 'ANKI_EXPORT', payload: tsv };
     }
 
     case 'TRACK_EVENT': {

@@ -144,7 +144,9 @@ async function handleSubtitleChange(observedText: string): Promise<void> {
           resp.payload.translatedText,
           settings.position,
           settings.fontSize,
-          settings.opacity
+          settings.opacity,
+          settings.blurSecondaryUntilHover,
+          settings.smartCollisionAvoidance,
         );
       }
     } else if (resp.type === 'ERROR') {
@@ -168,6 +170,80 @@ async function handleSubtitleChange(observedText: string): Promise<void> {
   }
 }
 
+let wasAutoPaused = false;
+
+function handleAutoPause(): void {
+  if (!settings?.autoPauseOnHover) return;
+  try {
+    const video = document.querySelector('video');
+    if (video && !video.paused) {
+      video.pause();
+      wasAutoPaused = true;
+    }
+  } catch (err) {
+    debug('content', 'Auto pause failed:', err);
+  }
+}
+
+function handleAutoResume(): void {
+  if (!settings?.autoPauseOnHover || !wasAutoPaused) return;
+  try {
+    const video = document.querySelector('video');
+    if (video && video.paused) {
+      void video.play().catch(() => {});
+      wasAutoPaused = false;
+    }
+  } catch (err) {
+    debug('content', 'Auto resume failed:', err);
+  }
+}
+
+function setupKeyboardShortcuts(): void {
+  window.addEventListener('keydown', (e) => {
+    if (!settings?.keyboardShortcutsEnabled) return;
+    const target = e.target as HTMLElement | null;
+    if (
+      target &&
+      (target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable)
+    ) {
+      return;
+    }
+
+    const key = e.key.toLowerCase();
+    const video = document.querySelector('video');
+
+    if (key === 'a') {
+      // Jump back 3 seconds
+      e.preventDefault();
+      if (video) {
+        video.currentTime = Math.max(0, video.currentTime - 3);
+      }
+    } else if (key === 's') {
+      // Replay current sentence / jump back 2s and play
+      e.preventDefault();
+      if (video) {
+        video.currentTime = Math.max(0, video.currentTime - 2);
+        void video.play().catch(() => {});
+      }
+    } else if (key === 'd') {
+      // Jump forward 3 seconds
+      e.preventDefault();
+      if (video) {
+        video.currentTime = Math.min(video.duration || 999999, video.currentTime + 3);
+      }
+    } else if (key === 'h') {
+      // Toggle blur
+      e.preventDefault();
+      const overlay = document.querySelector('[data-linguaflix-subtitle]') as HTMLDivElement | null;
+      if (overlay) {
+        overlay.classList.toggle('linguaflix-blurred');
+      }
+    }
+  });
+}
+
 async function renderTokenizedOverlay(
   originalText: string,
   translatedText: string,
@@ -179,25 +255,50 @@ async function renderTokenizedOverlay(
 
   let overlay = document.querySelector('[data-linguaflix-subtitle]') as HTMLDivElement | null;
   if (!overlay) {
-    showTranslation(translatedText, settings.position, settings.fontSize, settings.opacity);
+    showTranslation(
+      translatedText,
+      settings.position,
+      settings.fontSize,
+      settings.opacity,
+      settings.blurSecondaryUntilHover,
+      settings.smartCollisionAvoidance,
+    );
     overlay = document.querySelector('[data-linguaflix-subtitle]') as HTMLDivElement | null;
   } else {
     // Keep styling/state in sync
-    showTranslation(translatedText, settings.position, settings.fontSize, settings.opacity);
+    showTranslation(
+      translatedText,
+      settings.position,
+      settings.fontSize,
+      settings.opacity,
+      settings.blurSecondaryUntilHover,
+      settings.smartCollisionAvoidance,
+    );
   }
   if (!overlay) return;
 
   // Replace the plain text with tokenized clickable spans
   overlay.innerHTML = '';
-  const tokenContainer = renderTokenizedSubtitle(tokens, (word, reading, el) => {
-    trackEvent('word_translation_requested', { word, reading, episodeId: getEpisodeId() }).catch(() => {});
-    trackEvent('word_popup_opened', { word, wordLength: word.length }).catch(() => {});
-    showWordPopup(word, reading, el, settings!.languagePair.source, settings!.languagePair.target);
-  });
+  const tokenContainer = renderTokenizedSubtitle(
+    tokens,
+    (word, reading, el) => {
+      trackEvent('word_translation_requested', { word, reading, episodeId: getEpisodeId() }).catch(() => {});
+      trackEvent('word_popup_opened', { word, wordLength: word.length }).catch(() => {});
+      showWordPopup(word, reading, el, settings!.languagePair.source, settings!.languagePair.target, originalText);
+    },
+    {
+      showFurigana: settings.showFurigana,
+      onWordHoverStart: () => handleAutoPause(),
+      onWordHoverEnd: () => handleAutoResume(),
+    },
+  );
   const translationLine = document.createElement('div');
   translationLine.style.marginTop = '4px';
   translationLine.style.fontSize = '0.85em';
   translationLine.style.color = '#a5b4fc';
+  if (settings.blurSecondaryUntilHover) {
+    translationLine.className = 'linguaflix-blurred';
+  }
   translationLine.textContent = translatedText;
 
   overlay.appendChild(tokenContainer);
@@ -330,6 +431,8 @@ async function init(): Promise<void> {
   }
 
   debug('content', 'Session active — starting subtitle observer');
+
+  setupKeyboardShortcuts();
 
   // Pre-warm the kuromoji tokenizer in the background
   if (settings?.autoTokenize) {

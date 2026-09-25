@@ -9,4 +9,5 @@ export function translationCacheKey(text: string, langPair: string): string {
 
 export const SESSION_KEY = 'user_session';
 export const SETTINGS_KEY = 'user_settings';
+export const SAVED_WORDS_KEY = 'saved_words';
 export const TOKEN_REFRESH_ALARM = 'token_refresh';

@@ -4,6 +4,11 @@ import webExtension from 'vite-plugin-web-extension';
 import path from 'node:path';
 
 export default defineConfig({
+  server: {
+    host: '0.0.0.0',
+    port: 3000,
+  },
+
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -28,11 +33,12 @@ export default defineConfig({
 
     webExtension({
       manifest: path.resolve(__dirname, './manifest.json'),
+      disableAutoLaunch: true,
 
       // The injected page script is not referenced in manifest content_scripts
       // (it's injected at runtime via document.createElement('script')), so we
       // register it as an additionalInput so Vite compiles and hashes it.
-      additionalInputs: ['src/injected/netflix-player-hook.ts'],
+      additionalInputs: ['src/injected/netflix-player-hook.ts', 'index.html'],
     }),
   ],
 });

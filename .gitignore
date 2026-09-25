@@ -3,6 +3,10 @@ node_modules/
 
 # ── Build output ──────────────────────────────────────────
 dist/
+*.zip
+metadata.json
+package-lock.json
+bun.lock
 
 # ── Environment variables (NEVER commit) ──────────────────
 .env
