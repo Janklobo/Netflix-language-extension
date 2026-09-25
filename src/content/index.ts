@@ -444,14 +444,7 @@ function applySettings(): void {
     setWordClickCallback(async (word, reading, clickX, clickY) => {
       trackEvent('word_translation_requested', { word, reading, episodeId: getEpisodeId() }).catch(() => {});
       trackEvent('word_popup_opened', { word, wordLength: word.length }).catch(() => {});
-      // Create a temporary element for positioning
-      const tempEl = document.createElement('span');
-      tempEl.style.position = 'fixed';
-      tempEl.style.left = `${clickX}px`;
-      tempEl.style.top = `${clickY}px`;
-      document.body.appendChild(tempEl);
-      showWordPopup(word, reading, tempEl, sourceLang, targetLang);
-      setTimeout(() => tempEl.remove(), 0);
+      showWordPopup(word, reading, { clientX: clickX, clientY: clickY }, sourceLang, targetLang);
     });
 
     if (settings.subtitleMode === 'click') {

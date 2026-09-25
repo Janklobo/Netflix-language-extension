@@ -94,7 +94,7 @@ function createOverlay(): HTMLDivElement {
   el.style.position = 'fixed';
   el.style.left = '50%';
   el.style.transform = 'translateX(-50%)';
-  el.style.zIndex = '9999999';
+  el.style.zIndex = '999990';
   el.style.color = '#FFFFFF';
   el.style.fontWeight = '600';
   el.style.textAlign = 'center';

@@ -22,10 +22,12 @@ function containsKanji(text: string): boolean {
   return /[\u4e00-\u9faf]/.test(text);
 }
 
+export type PopupAnchor = HTMLElement | { clientX: number; clientY: number };
+
 export function showWordPopup(
   word: string,
   reading: string | undefined,
-  anchorEl: HTMLElement,
+  anchorEl: PopupAnchor,
   sourceLang: string,
   targetLang: string,
   contextSentence?: string,
@@ -34,6 +36,8 @@ export function showWordPopup(
 
   popupEl = document.createElement('div');
   popupEl.setAttribute(LINGUAFLIX_ATTR.POPUP, '');
+  popupEl.style.position = 'fixed';
+  popupEl.style.zIndex = '2147483647';
   popupEl.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between">
       <div class="headword" style="font-family:'Newsreader',Georgia,serif;font-weight:700;font-size:18px;color:#1C1917">${word}</div>
@@ -127,24 +131,70 @@ export function removePopup(): void {
   }
 }
 
-function positionPopup(anchor: HTMLElement): void {
+function positionPopup(anchor: PopupAnchor): void {
   if (!popupEl) return;
-  const rect = anchor.getBoundingClientRect();
+
+  let anchorRect: { top: number; bottom: number; left: number; right: number; width: number; height: number };
+  if ('getBoundingClientRect' in anchor) {
+    anchorRect = anchor.getBoundingClientRect();
+  } else {
+    anchorRect = {
+      top: anchor.clientY - 4,
+      bottom: anchor.clientY + 4,
+      left: anchor.clientX - 4,
+      right: anchor.clientX + 4,
+      width: 8,
+      height: 8,
+    };
+  }
+
   const popupRect = popupEl.getBoundingClientRect();
 
-  let top = rect.top - popupRect.height - 8;
-  let left = rect.left + rect.width / 2 - popupRect.width / 2;
+  // Prefer positioning above the clicked word
+  let top = anchorRect.top - popupRect.height - 14;
+  let left = anchorRect.left + anchorRect.width / 2 - popupRect.width / 2;
 
-  // Clamp to viewport
-  if (top < 8) top = rect.bottom + 8;
-  if (left < 8) left = 8;
-  if (left + popupRect.width > window.innerWidth - 8) {
-    left = window.innerWidth - popupRect.width - 8;
+  // Check if LinguaFlix secondary subtitle overlay is visible on screen
+  const overlay = document.querySelector('[data-linguaflix-subtitle]') as HTMLElement | null;
+  if (overlay && overlay.style.display !== 'none') {
+    const overlayRect = overlay.getBoundingClientRect();
+
+    // Check if the proposed popup rect overlaps with the subtitle overlay
+    const overlaps =
+      top < overlayRect.bottom &&
+      top + popupRect.height > overlayRect.top &&
+      left < overlayRect.right &&
+      left + popupRect.width > overlayRect.left;
+
+    if (overlaps) {
+      // If the subtitle overlay is above the clicked anchor, place the popup above the overlay!
+      if (overlayRect.top - popupRect.height - 14 > 14) {
+        top = overlayRect.top - popupRect.height - 14;
+      } else {
+        // If there's no room above the overlay, place popup below the clicked anchor
+        top = anchorRect.bottom + 14;
+      }
+    }
+  }
+
+  // Ensure popup stays nicely within the viewport
+  if (top < 14) {
+    top = Math.min(window.innerHeight - popupRect.height - 14, Math.max(14, anchorRect.bottom + 14));
+  }
+  if (top + popupRect.height > window.innerHeight - 14) {
+    top = window.innerHeight - popupRect.height - 14;
+  }
+  if (left < 14) {
+    left = 14;
+  }
+  if (left + popupRect.width > window.innerWidth - 14) {
+    left = window.innerWidth - popupRect.width - 14;
   }
 
   popupEl.style.position = 'fixed';
-  popupEl.style.top = `${top}px`;
-  popupEl.style.left = `${left}px`;
+  popupEl.style.top = `${Math.round(top)}px`;
+  popupEl.style.left = `${Math.round(left)}px`;
+  popupEl.style.zIndex = '2147483647';
 }
 
 export interface RenderTokenOptions {
