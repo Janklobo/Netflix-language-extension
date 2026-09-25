@@ -1,8 +1,8 @@
 // Netflix selectors — data-uia preferred but class fallbacks added as Netflix changes DOM
 export const NETFLIX_SELECTORS = {
   PLAYER: '[data-uia="player"]',
-  // Try data-uia first (stable), fall back to class name (current as of 2026-06)
-  SUBTITLE_CONTAINER: '[data-uia="player-timedtext"], .player-timedtext',
+  // Support data-uia, class, and text-container variations across Netflix web player updates
+  SUBTITLE_CONTAINER: '[data-uia="player-timedtext"], .player-timedtext, .player-timedtext-text-container, [class*="player-timedtext"], [class*="timedtext"]',
   VIDEO: 'video',
 } as const;
 

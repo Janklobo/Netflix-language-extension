@@ -8,12 +8,15 @@ export default function App(): React.ReactElement {
   const [activeTab, setActiveTab] = useState<'presets' | 'controls' | 'saved'>('presets');
   const [session, setSession] = useState<UserSession | null>(null);
   const [settings, setSettings] = useState<UserSettings>({
+    languagePair: { source: 'auto', target: 'en' },
     targetLanguage: 'es',
     nativeLanguage: 'en',
     subtitleMode: 'double',
+    showOriginal: true,
     fontSize: 'medium',
     position: 'below',
     opacity: 85,
+    autoTokenize: true,
     autoPauseOnHover: true,
     showFurigana: false,
     learningPreset: 'active',
@@ -219,13 +222,30 @@ export default function App(): React.ReactElement {
               </div>
               <div className="grid grid-cols-[1fr,auto,1fr] items-center gap-1.5">
                 <div className="bg-[#FAF7EE] border border-[#E8E2D3] rounded-lg px-2.5 py-1.5 flex items-center justify-between">
-                  <div>
+                  <div className="w-full">
                     <span className="text-[10px] text-[#78716C] block leading-tight">Audio / Sub 1</span>
-                    <span className="text-xs font-semibold text-[#1C1917]">
-                      {settings.targetLanguage === 'es' ? 'Spanish (ES)' : settings.targetLanguage === 'fr' ? 'French (FR)' : settings.targetLanguage === 'ja' ? 'Japanese (JA)' : 'Spanish (ES)'}
-                    </span>
+                    <select
+                      value={settings.languagePair?.source || 'auto'}
+                      onChange={(e) => {
+                        const newSource = e.target.value;
+                        handleUpdateSetting({
+                          languagePair: { source: newSource, target: settings.languagePair?.target || 'en' },
+                          targetLanguage: newSource,
+                        });
+                      }}
+                      className="text-xs font-semibold text-[#1C1917] bg-transparent border-none p-0 focus:outline-none cursor-pointer w-full"
+                    >
+                      <option value="auto">✨ Auto-Detect</option>
+                      <option value="es">🇪🇸 Spanish</option>
+                      <option value="ja">🇯🇵 Japanese</option>
+                      <option value="fr">🇫🇷 French</option>
+                      <option value="de">🇩🇪 German</option>
+                      <option value="it">🇮🇹 Italian</option>
+                      <option value="ko">🇰🇷 Korean</option>
+                      <option value="zh">🇨🇳 Chinese</option>
+                      <option value="pt">🇵🇹 Portuguese</option>
+                    </select>
                   </div>
-                  <span className="text-xs">{settings.targetLanguage === 'fr' ? '🇫🇷' : settings.targetLanguage === 'ja' ? '🇯🇵' : '🇪🇸'}</span>
                 </div>
 
                 <div className="w-6 h-6 rounded-full bg-[#F4EFE0] flex items-center justify-center text-[#78716C] border border-[#E8E2D3]">
@@ -235,11 +255,29 @@ export default function App(): React.ReactElement {
                 </div>
 
                 <div className="bg-[#FAF7EE] border border-[#E8E2D3] rounded-lg px-2.5 py-1.5 flex items-center justify-between">
-                  <div>
+                  <div className="w-full">
                     <span className="text-[10px] text-[#78716C] block leading-tight">Translation Sub 2</span>
-                    <span className="text-xs font-semibold text-[#1C1917]">English (US)</span>
+                    <select
+                      value={settings.languagePair?.target || 'en'}
+                      onChange={(e) => {
+                        const newTarget = e.target.value;
+                        handleUpdateSetting({
+                          languagePair: { source: settings.languagePair?.source || 'auto', target: newTarget },
+                          nativeLanguage: newTarget,
+                        });
+                      }}
+                      className="text-xs font-semibold text-[#1C1917] bg-transparent border-none p-0 focus:outline-none cursor-pointer w-full"
+                    >
+                      <option value="en">🇺🇸 English</option>
+                      <option value="es">🇪🇸 Spanish</option>
+                      <option value="fr">🇫🇷 French</option>
+                      <option value="de">🇩🇪 German</option>
+                      <option value="it">🇮🇹 Italian</option>
+                      <option value="ja">🇯🇵 Japanese</option>
+                      <option value="pt">🇧🇷 Portuguese</option>
+                      <option value="pl">🇵🇱 Polish</option>
+                    </select>
                   </div>
-                  <span className="text-xs">🇺🇸</span>
                 </div>
               </div>
             </div>

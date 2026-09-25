@@ -18,4 +18,4 @@ export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
   { code: 'en', name: 'English', nativeName: 'English' },
 ];
 
-export const DEFAULT_LANGUAGE_PAIR = { source: 'ja', target: 'en' };
+export const DEFAULT_LANGUAGE_PAIR = { source: 'auto', target: 'en' };

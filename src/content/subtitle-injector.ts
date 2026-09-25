@@ -81,6 +81,21 @@ export function removeOverlay(): void {
 function createOverlay(): HTMLDivElement {
   const el = document.createElement('div');
   el.setAttribute(LINGUAFLIX_ATTR.SUBTITLE, '');
+  el.style.position = 'fixed';
+  el.style.left = '50%';
+  el.style.transform = 'translateX(-50%)';
+  el.style.zIndex = '9999999';
+  el.style.color = '#FFFFFF';
+  el.style.fontWeight = '600';
+  el.style.textAlign = 'center';
+  el.style.pointerEvents = 'none';
+  el.style.borderRadius = '12px';
+  el.style.padding = '8px 20px 10px';
+  el.style.maxWidth = '85vw';
+  el.style.whiteSpace = 'pre-wrap';
+  el.style.backgroundColor = 'rgba(0, 0, 0, 0.82)';
+  el.style.border = '1px solid rgba(255, 255, 255, 0.15)';
+  el.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.5)';
   return el;
 }
 

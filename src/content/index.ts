@@ -117,8 +117,8 @@ async function handleSubtitleChange(observedText: string): Promise<void> {
       type: 'TRANSLATE',
       payload: {
         text,
-        sourceLang: settings.languagePair.source,
-        targetLang: settings.languagePair.target,
+        sourceLang: settings.languagePair?.source || 'auto',
+        targetLang: settings.languagePair?.target || 'en',
         episodeId,
       },
     });
@@ -414,23 +414,42 @@ async function init(): Promise<void> {
   // Inject player hook immediately to listen for video time/subtitle events early
   injectPlayerHook();
 
+  // Load session info if logged in (for account sync)
   const sessionResp = await sendToBackground({ type: 'GET_USER_SESSION' }).catch(() => null);
-  if (!sessionResp || sessionResp.type !== 'USER_SESSION' || !sessionResp.payload) {
-    debug('content', 'No active session — skipping observer');
-    return;
+  if (sessionResp?.type === 'USER_SESSION' && sessionResp.payload) {
+    debug('content', 'User session active');
+  } else {
+    debug('content', 'Running in guest mode');
   }
 
   const settingsResp = await sendToBackground({ type: 'GET_SETTINGS' }).catch(() => null);
-  if (settingsResp?.type === 'SETTINGS') {
+  if (settingsResp?.type === 'SETTINGS' && settingsResp.payload) {
     settings = settingsResp.payload;
-    applySettings();
-    // If subtitle track loaded before settings were fetched, prefetch now
-    if (subtitleTrack.length > 0) {
-      handleTimeUpdate(lastCurrentTimeMs);
-    }
+  } else {
+    settings = {
+      languagePair: { source: 'auto', target: 'en' },
+      subtitleMode: 'double',
+      showOriginal: true,
+      fontSize: 'medium',
+      opacity: 85,
+      position: 'below',
+      autoTokenize: true,
+      learningPreset: 'active',
+      autoPauseOnHover: false,
+      blurSecondaryUntilHover: false,
+      showFurigana: true,
+      smartCollisionAvoidance: true,
+      keyboardShortcutsEnabled: true,
+    };
+  }
+  applySettings();
+
+  // If subtitle track loaded before settings were fetched, prefetch now
+  if (subtitleTrack.length > 0) {
+    handleTimeUpdate(lastCurrentTimeMs);
   }
 
-  debug('content', 'Session active — starting subtitle observer');
+  debug('content', 'Starting subtitle observer');
 
   setupKeyboardShortcuts();
 
